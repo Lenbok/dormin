@@ -69,7 +69,7 @@ struct bone {
 typedef struct {
     int num_bones;
     int num_vertices;
-    int bufid[COUNT];
+    GLuint bufid[COUNT];
     float *ptrs[COUNT];
     struct skin *skin;
     struct bone *bones;
