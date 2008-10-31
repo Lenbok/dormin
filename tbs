@@ -22,10 +22,10 @@ if ! md5sum --status -c $d; then
     mv $d.tmp $d
 fi
 
-gcc="gcc"
+cc="cc"
 test $(hostname) = "linmac" && {
-    gcc="$HOME/x/dev/gcc-4.2.1/bin/gcc";
+    cc="$HOME/x/dev/gcc-4.3.0/bin/gcc";
 }
 
 targets="dormin"
-./b -O src:$h -r -O gcc:$gcc $* $targets
+./b -O src:$h -r -O cc:$cc $* $targets
