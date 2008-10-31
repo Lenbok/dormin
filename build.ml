@@ -13,12 +13,18 @@ let srcdir =
   | Some s -> s
 ;;
 
+let cc =
+  match getval "cc" with
+  | None -> "cc"
+  | Some s -> s
+;;
+
 let boc flags src =
   let o = src ^ ".o" in
   let c = src ^ ".c" in
   ocaml
     "ocamlc.opt"
-    ("-ccopt '-Wall -Wno-unused -g " ^ flags ^ " -o " ^ o ^ "'")
+    ("-cc " ^ cc ^ " -ccopt '-Wall -Wno-unused " ^ flags ^ " -o " ^ o ^ "'")
     o
     (StrSet.singleton o)
     [Filename.concat srcdir c]
@@ -35,7 +41,7 @@ let bso src =
   let so = Filename.concat (Sys.getcwd ()) so in
   let o = src ^ ".o" in
   ocaml
-    "gcc"
+    cc
     ("-shared -o " ^ so)
     so
     (StrSet.singleton so)
