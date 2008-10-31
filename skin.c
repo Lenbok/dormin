@@ -3,7 +3,11 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
 
 #ifndef GL_VERSION_1_5
 #define GL_ARRAY_BUFFER                   0x8892
