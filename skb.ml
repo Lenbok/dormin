@@ -76,7 +76,6 @@ let vertices1 bones rotations poseno =
 ;;
 
 let draw data =
-  let quad = GluQuadric.create () in
   let rta = vertices data in
 
   let sphere origin =
@@ -84,7 +83,7 @@ let draw data =
     GlMat.push ();
     GlMat.translate3 (origin);
     let radius = Rend.view.Rend.radial_scale*.0.009 in
-    GluQuadric.sphere ~radius ~stacks:5 ~slices:5 ~quad ();
+    GluQuadric.sphere ~radius ~stacks:5 ~slices:5 ();
     GlMat.pop ()
   in
 
