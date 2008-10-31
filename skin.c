@@ -50,7 +50,7 @@ static PFNGLUNMAPBUFFERPROC glUnmapBuffer;
 
 #include "vec.c"
 
-enum {V_IDX, N_IDX, UV_IDX, COUNT};
+enum {V_IDX, N_IDX, UV_IDX, C_IDX, COUNT};
 
 struct skin {
     int boneindices[3];
@@ -86,7 +86,7 @@ typedef struct {
 static State glob_state;
 
 static void skin_init (State *s, value vertexa_v, value normala_v,
-                       value uva_v, value skin_v)
+                       value uva_v, value skin_v, value colors_v)
 {
     int i;
     GLsizei size;
@@ -119,6 +119,10 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
     glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
     glBufferData (GL_ARRAY_BUFFER, size, p, GL_STATIC_DRAW);
     stat_free (p);
+
+    size = s->num_vertices * 4;
+    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
+    glBufferData (GL_ARRAY_BUFFER, size, String_val (colors_v), GL_STATIC_DRAW);
 
     s->skin = skin = stat_alloc (s->num_vertices * sizeof (struct skin));
     for (i = 0; i < s->num_vertices; ++i) {
@@ -154,6 +158,11 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
     glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
     glTexCoordPointer (2, GL_FLOAT, 0, NULL);
+
+    glEnableClientState (GL_COLOR_ARRAY);
+    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
+    glColorPointer (4, GL_UNSIGNED_BYTE, 0, NULL);
+
     return Val_unit;
 }
 
@@ -162,6 +171,7 @@ CAMLprim value ml_skin_draw_end (value uint_v)
     glDisableClientState (GL_VERTEX_ARRAY);
     glDisableClientState (GL_NORMAL_ARRAY);
     glDisableClientState (GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState (GL_COLOR_ARRAY);
     glBindBuffer (GL_ARRAY_BUFFER, 0);
 
 #if 0
@@ -192,7 +202,7 @@ CAMLprim value ml_skin_draw_end (value uint_v)
 CAMLprim value ml_skin_init (value geom_v)
 {
     CAMLparam1 (geom_v);
-    CAMLlocal4 (vertexa_v, normala_v, uva_v, skin_v);
+    CAMLlocal5 (vertexa_v, normala_v, uva_v, skin_v, colors_v);
     State *s = &glob_state;
 
 #ifdef _WIN32
@@ -206,8 +216,9 @@ CAMLprim value ml_skin_init (value geom_v)
     normala_v = Field (geom_v, 1);
     uva_v     = Field (geom_v, 2);
     skin_v    = Field (geom_v, 3);
+    colors_v  = Field (geom_v, 4);
 
-    skin_init (s, vertexa_v, normala_v, uva_v, skin_v);
+    skin_init (s, vertexa_v, normala_v, uva_v, skin_v, colors_v);
     CAMLreturn (Val_unit);
 }
 

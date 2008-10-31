@@ -2,7 +2,7 @@ type skin = (float * float * float * int) array
 type skel = (int * float array) array
 type anim = Qtr.t array
 
-external init : (float array * float array * float array * skin) -> unit
+external init : (float array * float array * float array * skin * string) -> unit
   = "ml_skin_init"
 
 external draw_begin : unit -> unit = "ml_skin_draw_begin"

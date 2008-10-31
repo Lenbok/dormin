@@ -374,7 +374,11 @@ let r xff sbufxff =
 ;;
 
 let draw geom =
-  let l = lazy (Skin.init (geom.vertexa, geom.normala, geom.uva, geom.skin)) in
+  let l = lazy
+    (
+      Skin.init (geom.vertexa, geom.normala, geom.uva, geom.skin, geom.colora)
+    )
+  in
   fun textures lighting solid () ->
     let () = Lazy.force l in
     if true then (
