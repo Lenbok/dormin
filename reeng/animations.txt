@@ -1,0 +1,88 @@
+What defines an animation in SOTC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+File with animation contains:
+16 bit count - number of poses? (M)
+32 bit count - number of bones  (N)
+
+There's an array of per bone flags, each flag is 8 bit and can take
+following values: 0,3,4,5,6,12,13 (at least only those has been
+observed in .anb files)
+
+Every bone has associated data whose length/interpretation depends on
+the value of the flag.
+
+----------------------------------------------------------------------
+When flag is 0:
+ Data contains: 4 floating point numbers (unit quaternion).
+
+----------------------------------------------------------------------
+When flag is 3,4,5,6:
+ Data contains: 8 floating point numbers and an array of M 32 bit
+ values.
+
+ Floating points are 4 pairs actually, for first 3 pairs following
+ holds:
+   first pair member is in [-1, 1]
+   second                  [ 0, 1)
+
+ For last(4th) pair:
+   first pair member is in [-0.018651, 0.016117]
+   second                  [ 0.000000, 0.044226]
+
+ Depending on the flag the value from 32bit array[M] is broken down
+ like this:
+                              I    J    K    S (signed N bit vars)
+   flag 3                  5bit 9bit 9bit 9bit
+        4                  9bit 5bit 9bit 9bit
+        5                  9bit 9bit 5bit 9bit
+        6                  9bit 9bit 9bit 5bit
+
+ From these one can obtain quaternion like this:
+   float i, j, k, s;
+   switch (flag) {
+   case 3:
+     j = madd(J / 256.0, pairs[0].first, pairs[0].second);
+     k = madd(K / 256.0, pairs[1].first, pairs[1].second);
+     s = madd(S / 256.0, pairs[2].first, pairs[2].second);
+     i = sqrt(1 - magnitude(j, k, s));
+     if (I & 16) i = -i;
+     break;
+   case 4:
+     i = madd(I / 256.0, pairs[0].first, pairs[0].second);
+     k = madd(K / 256.0, pairs[1].first, pairs[1].second);
+     s = madd(S / 256.0, pairs[2].first, pairs[2].second);
+     j = sqrt(1 - magnitude(i, k, s));
+     if (J & 16) j = -j;
+     break;
+   ... and so on
+   }
+
+   quat q = (i, j, k, s);
+
+ (It's evident that last 4 bits of 5bit value are unaccounted for,
+  likewise the third pair)
+
+----------------------------------------------------------------------
+When flag is 12:
+ Data contains: 6 floating point numbers and an array of M 48 bit
+ values. (Looks as if every 48 bit value is a tuple of three 16 bit
+ values)
+
+ Floating pints form 3 pairs, constraint:
+  first pair member (-1, 1)
+  second            [ 0, 1)
+
+----------------------------------------------------------------------
+When flag is 13:
+ Data contains: 5 floating point numbers and an array of M signed 16
+ bit values.
+
+ Floats:
+  [0]    - [0.024525, 6.266401]
+  [1]    - [0.003143, 1.655432]
+  [2..4] - axis
+
+ From these one can obtain quaternion like this:
+  float radians = madd(16bitint / 32767.0, float[1], float[0])
+  quat q = from_axis_angle(axis, radians);

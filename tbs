@@ -1,0 +1,31 @@
+#!/bin/sh
+
+#set -x
+set -e
+
+h=$(readlink -f $(dirname $0))
+r=$(readlink -f $h/../..)
+t=$r/tbs
+d=MD5
+
+export OCAMLRUNPARAM=b
+
+if test $h = $PWD; then
+    mkdir -p build
+    cd build
+fi
+
+if ! md5sum --status -c $d; then
+    md5sum $h/build.ml $h/tbs $t/tbs.cma >$d.tmp
+    ocamlc.opt -o build.cmo -c -g -I $t $h/build.ml
+    ocamlc.opt -g -thread -I $t unix.cma threads.cma tbs.cma build.cmo -o b
+    mv $d.tmp $d
+fi
+
+gcc="gcc"
+test $(hostname) = "linmac" && {
+    gcc="$HOME/x/dev/gcc-4.2.1/bin/gcc";
+}
+
+targets="dormin"
+./b -O src:$h -r -O gcc:$gcc $* $targets

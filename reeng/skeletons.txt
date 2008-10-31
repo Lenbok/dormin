@@ -1,0 +1,70 @@
+What defines a skeleton in SOTC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Bones of the skeleton are defined by:
+32 bit index
+32 bit parent index (-1 if no parent)
+32 bit index of child1 (-1 if no child1 (what for?))
+32 bit index of child2 (-1 if no child2 (what for?))
+9 floats
+
+Floats:
+ [0]    0.0
+ [1..3] Translation vector
+ [4]    1.0
+ [5..7] Rotation (unit quaternion)
+
+P.S. The above description doesn't mention Opt bones, but
+     they should be irrelevant if we drop IK from consideration,
+     besides animations (stored in .anb files) are defined in
+     terms of main bones only.
+
+Peculiarities
+~~~~~~~~~~~~~
+
+Skeleton can be visualized (brought to bind pose) like this:
+
+  quaternions[len (skeleton.bones) + 1]
+  translations[len (skeleton.bones) + 1]
+
+  quaternions[0] = (0, 0, 0, 1)
+  translations[0] = (0, 0, 0)
+
+  for bone in skeleton.bones:
+      parentquaternion = quaternions[bone.parent + 1]
+      parenttranslation = translations[bone.parent + 1]
+
+      p = quaternion_apply_to_point (parentquaternion, bone.translation)
+      p = vector_add (p, parenttranslation)
+      q = quaternion_compose (bone.quaternion, parentquaternion)
+
+      translations[bone.index + 1] = p
+      quaternions[bone.index + 1] = q
+
+Thing is - quaternion_apply_to_point only "works" if we negate last
+element of quaternion, i.e:
+
+  # Routine taken straight from the wikipedia article
+  # http://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
+  def quaternion_apply_to_point (q, p):
+      a   = -q[3] # why this must be negated?
+      b   =  q[0]
+      c   =  q[1]
+      d   =  q[2]
+      p1  =  p[0]
+      p2  =  p[1]
+      p3  =  p[2]
+      t2  =  a*b
+      t3  =  a*c
+      t4  =  a*d
+      t5  = -b*b
+      t6  =  b*c
+      t7  =  b*d
+      t8  = -c*c
+      t9  =  c*d
+      t10 = -d*d
+
+      r0 = 2*((t8 + t10)*v1 + (t6 -  t4)*v2 + (t3 + t7)*v3) + v1
+      r1 = 2*((t4 +  t6)*v1 + (t5 + t10)*v2 + (t9 - t2)*v3) + v2
+      r2 = 2*((t7 -  t3)*v1 + (t2 +  t9)*v2 + (t5 + t8)*v3) + v3
+      return (r0, r1, r2)
