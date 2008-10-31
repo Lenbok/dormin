@@ -16,9 +16,9 @@
 #define GL_WRITE_ONLY                     0x88B9
 #ifndef APIENTRYP
 #define APIENTRYP APIENTRY *
+#endif
 typedef ptrdiff_t GLintptr;
 typedef ptrdiff_t GLsizeiptr;
-#endif
 typedef void (APIENTRYP PFNGLBINDBUFFERPROC) (GLenum target, GLuint buffer);
 typedef void (APIENTRYP PFNGLGENBUFFERSPROC) (GLsizei n, GLuint *buffers);
 typedef void (APIENTRYP PFNGLBUFFERDATAPROC) (GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
@@ -29,6 +29,14 @@ static PFNGLGENBUFFERSPROC glGenBuffers;
 static PFNGLBUFFERDATAPROC glBufferData;
 static PFNGLMAPBUFFERPROC glMapBuffer;
 static PFNGLUNMAPBUFFERPROC glUnmapBuffer;
+#define GETPA(name) for (;;) {                                          \
+    *(PROC *) &gl##name = wglGetProcAddress ("gl" # name);     \
+    if (!gl##name) {                                                    \
+        fprintf (stderr, "could not get address of gl"#name"\n");       \
+        exit (EXIT_FAILURE);                                            \
+    }                                                                   \
+    break;                                                              \
+}
 #endif
 
 #include <math.h>
@@ -188,11 +196,11 @@ CAMLprim value ml_skin_init (value geom_v)
     State *s = &glob_state;
 
 #ifdef _WIN32
-    *(PROC *) &glBindBuffer = wglGetProcAddress ("glBindBuffer");
-    *(PROC *) &glGenBuffers = wglGetProcAddress ("glGenBuffers");
-    *(PROC *) &glBufferData = wglGetProcAddress ("glBufferData");
-    *(PROC *) &glMapBuffer = wglGetProcAddress ("glMapBuffer");
-    *(PROC *) &glUnmapBuffer = wglGetProcAddress ("glUnmapBuffer");
+    GETPA (BindBuffer);
+    GETPA (GenBuffers);
+    GETPA (BufferData);
+    GETPA (MapBuffer);
+    GETPA (UnmapBuffer);
 #endif
     vertexa_v = Field (geom_v, 0);
     normala_v = Field (geom_v, 1);
