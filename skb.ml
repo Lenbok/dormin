@@ -154,11 +154,12 @@ let func bones anim =
 ;;
 
 let dummy draw =
-  let rec subfunc = function
-    | Rend.Draw -> draw (); Rend.Func subfunc
-    | _ -> Rend.Func subfunc
+  let rec subfunc dodraw = function
+    | Rend.Draw -> if dodraw then draw (); Rend.Func (subfunc dodraw)
+    | Rend.Char 's' -> Rend.Func (subfunc (not dodraw))
+    | _ -> Rend.Func (subfunc dodraw)
   in
-  subfunc
+  subfunc false
 ;;
 
 let skin bones =
