@@ -105,6 +105,7 @@ let help () =
     ;" m", "toggle model"
     ;" w", "toggle wireframe"
     ;" a", "toggle animation"
+    ;" o", "toggle bounding sphere"
     ;" f", "forward one frame"
     ;" b", "backward one frame"
     ;" r", "bring skeleton to rest pose and set frame number to 0"
