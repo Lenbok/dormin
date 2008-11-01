@@ -26,7 +26,7 @@ type view =
     ; mutable help : bool
     ; mutable x : int
     ; mutable y : int
-    ; mutable track_mouse : bool
+    ; mutable mtype : [`none|`zoom|`rotate]
     }
 
 let view =
@@ -47,7 +47,7 @@ let view =
   ; help = true
   ; x = 0
   ; y = 0
-  ; track_mouse = false
+  ; mtype = `none
   }
 ;;
 
@@ -118,6 +118,9 @@ let help () =
     ;" d", "dump images to dump.rgb"
     ;" z,x,arrows", "rotate"
     ;" 0,9", "zoom"
+    ;"", ""
+    ;"Move mouse while holding left button pressed to rotate model", ""
+    ;"Move mouse while holding right button pressed to zoom", ""
     ];
 
   Gl.enable `depth_test;
@@ -283,28 +286,45 @@ let special ~key ~x ~y =
 ;;
 
 let motion ~x ~y =
-  if view.track_mouse
-  then
-    let dx = (x - view.x) in
-    let dy = (y - view.y) in
-    view.x <- x;
-    view.y <- y;
-    view.rotx <- view.rotx +. float dy;
-    view.roty <- view.roty -. float dx;
-    setup view.w view.h;
-    Glut.postRedisplay ();
+  let dx = (x - view.x) in
+  let dy = (y - view.y) in
+  view.x <- x;
+  view.y <- y;
+  match view.mtype with
+  | `rotate ->
+      view.rotx <- view.rotx +. float dy;
+      view.roty <- view.roty -. float dx;
+      setup view.w view.h;
+      Glut.postRedisplay ();
+  | `zoom ->
+      view.zoom <- view.zoom +. (float dy /. 50.);
+      setup view.w view.h;
+      Glut.postRedisplay ();
+  | `none ->
+      ()
 ;;
 
 let mouse ~button ~state ~x ~y =
   if button = Glut.LEFT_BUTTON
-  then
+  then (
     if state = Glut.DOWN
     then (
       view.x <- x;
       view.y <- y;
-      view.track_mouse <- true;
+      view.mtype <- `rotate;
     )
-    else view.track_mouse <- false
+    else view.mtype <- `none;
+  )
+  else if button = Glut.RIGHT_BUTTON
+  then (
+    if state = Glut.DOWN
+    then (
+      view.x <- x;
+      view.y <- y;
+      view.mtype <- `zoom;
+    )
+    else view.mtype <- `none;
+  );
 ;;
 
 let main () =
