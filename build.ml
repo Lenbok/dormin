@@ -7,24 +7,24 @@ open Helpers;;
 
 let jobs, targets, dodeplist, dotarlist = getopt ();;
 
-let srcdir =
-  match getval "src" with
-  | None -> failwith "no source dir"
-  | Some s -> s
+let get key msg =
+  match getval key with | None -> failwith msg | Some s -> s
 ;;
 
-let cc =
-  match getval "cc" with
-  | None -> "cc"
-  | Some s -> s
+let getdef key def =
+  match getval key with | None -> def | Some s -> s
 ;;
+
+let srcdir = get "src" "no source dir";;
+let cc = getdef "cc" "cc";;
+let ccopt = getdef "ccopt" "";;
 
 let boc flags src =
   let o = src ^ ".o" in
   let c = src ^ ".c" in
   ocaml
     "ocamlc.opt"
-    ("-cc " ^ cc ^ " -ccopt '-Wall -Wno-unused " ^ flags ^ " -o " ^ o ^ "'")
+    ("-cc " ^ cc ^ " -ccopt '" ^ flags ^ " " ^ ccopt ^ " -o " ^ o ^ "'")
     o
     (StrSet.singleton o)
     [Filename.concat srcdir c]
@@ -56,8 +56,8 @@ let _ =
     cmopp ~flags:"-g -I +lablGL -thread" ~dirname:srcdir src)
     ["xff"; "nto"; "nmo"; "slice"; "rend"; "vec"; "skb"; "qtr"; "anb"; "skin"]
   ;
-  boc "-g -O" "swizzle";
-  boc "-g -O" "skin";
+  boc "-g" "swizzle";
+  boc "-g" "skin";
   let so = bso "swizzle" in
   let so1 = bso "skin" in
   let prog name cmos =

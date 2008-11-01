@@ -23,9 +23,11 @@ if ! md5sum --status -c $d; then
 fi
 
 cc="cc"
+ccopt="-O"
 test $(hostname) = "linmac" && {
     cc="$HOME/x/dev/gcc-4.3.0/bin/gcc";
+    ccopt="$ccopt -Wall -Werror -Wextra -O3 -maltivec -ftree-vectorize";
 }
 
 targets="dormin"
-./b -O src:$h -r -O cc:$cc $* $targets
+./b -O src:$h -r -O ccopt:"$ccopt" -O cc:$cc $* $targets
