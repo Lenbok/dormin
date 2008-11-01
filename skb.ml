@@ -1,7 +1,5 @@
 open Format;;
 
-let xyzofvec v = (v.Vec.x, v.Vec.y, v.Vec.z)
-
 let qof f = Qtr.make f.(5) f.(6) f.(7) f.(8);;
 let vof f = Vec.make f.(1) f.(2) f.(3);;
 
@@ -51,7 +49,7 @@ let vertices bones =
 
     let q = Qtr.compose curq parentq in
     parentinfo.(i + 1) <- (q, v);
-    xyzofvec parentv, xyzofvec v;
+    Vec.elts parentv, Vec.elts v;
   in
   Array.mapi mapf bones;
 ;;
@@ -70,7 +68,7 @@ let vertices1 bones rotations poseno =
 
     let q = Qtr.compose curq parentq in
     parentinfo.(i + 1) <- (q, v);
-    xyzofvec parentv, xyzofvec v;
+    Vec.elts parentv, Vec.elts v;
   in
   Array.mapi mapf bones;
 ;;
