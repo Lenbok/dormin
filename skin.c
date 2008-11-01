@@ -147,6 +147,7 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
 {
     State *s = &glob_state;
 
+    (void) unit_v;
     glEnableClientState (GL_VERTEX_ARRAY);
     glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
     glVertexPointer (3, GL_FLOAT, 0, NULL);
@@ -166,8 +167,9 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
     return Val_unit;
 }
 
-CAMLprim value ml_skin_draw_end (value uint_v)
+CAMLprim value ml_skin_draw_end (value unit_v)
 {
+    (void) unit_v;
     glDisableClientState (GL_VERTEX_ARRAY);
     glDisableClientState (GL_NORMAL_ARRAY);
     glDisableClientState (GL_TEXTURE_COORD_ARRAY);
