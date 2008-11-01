@@ -24,6 +24,9 @@ type view =
     ; mutable roteye: bool
     ; mutable sphere : bool
     ; mutable help : bool
+    ; mutable x : int
+    ; mutable y : int
+    ; mutable track_mouse : bool
     }
 
 let view =
@@ -42,6 +45,9 @@ let view =
   ; roteye = true
   ; sphere = false
   ; help = true
+  ; x = 0
+  ; y = 0
+  ; track_mouse = false
   }
 ;;
 
@@ -276,6 +282,31 @@ let special ~key ~x ~y =
   Glut.postRedisplay ();
 ;;
 
+let motion ~x ~y =
+  if view.track_mouse
+  then
+    let dx = (x - view.x) in
+    let dy = (y - view.y) in
+    view.x <- x;
+    view.y <- y;
+    view.rotx <- view.rotx +. float dy;
+    view.roty <- view.roty -. float dx;
+    setup view.w view.h;
+    Glut.postRedisplay ();
+;;
+
+let mouse ~button ~state ~x ~y =
+  if button = Glut.LEFT_BUTTON
+  then
+    if state = Glut.DOWN
+    then (
+      view.x <- x;
+      view.y <- y;
+      view.track_mouse <- true;
+    )
+    else view.track_mouse <- false
+;;
+
 let main () =
   let w = 704
   and h = 576 in
@@ -290,6 +321,8 @@ let main () =
   let () = Glut.reshapeFunc reshape in
   let () = Glut.keyboardFunc keyboard in
   let () = Glut.specialFunc special in
+  let () = Glut.mouseFunc mouse in
+  let () = Glut.motionFunc motion in
   let () = Glut.mainLoop () in
   ()
 ;;
