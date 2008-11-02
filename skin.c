@@ -135,29 +135,6 @@ CAMLprim value ml_skin_draw_end (value unit_v)
     glDisableClientState (GL_TEXTURE_COORD_ARRAY);
     glDisableClientState (GL_COLOR_ARRAY);
     glBindBuffer (GL_ARRAY_BUFFER, 0);
-
-#if 0
-    glDisable (GL_TEXTURE_2D);
-    glDisable (GL_LIGHTING);
-    glColor3f (1.0, 0.0, 0.0);
-    glDisable (GL_DEPTH_TEST);
-    glLineWidth (4.0);
-
-    glBegin (GL_LINES);
-    {
-        int i;
-        State *s = &glob_state;
-        struct bone *b = s->bones + 1;
-
-        for (i = 0; i < s->num_bones; ++i, ++b) {
-            struct bone *p = &s->bones[b->parent];
-
-            glVertex3fv (p->amv);
-            glVertex3fv (b->amv);
-        }
-    }
-    glEnd ();
-#endif
     return Val_unit;
 }
 
@@ -329,28 +306,6 @@ CAMLprim value ml_skin_anim (value unit_v)
     nsrc = s->ptrs[N_IDX];
 
     translate (s, vdst, ndst);
-#if 0
-    {
-        int i;
-        for (i = 0; i < s->num_vertices; ++i) {
-            struct skin *skin;
-            struct bone *bone, *parent;
-            float v[3], v1[3], *v2;
-            float q[4];
-
-            skin = &s->skin[i];
-            bone = &s->bones[skin->boneindices[0]];
-            parent = &s->bones[bone->parent];
-
-            vdst += 3;
-            vsrc += 3;
-
-            *ndst++ = *nsrc++;
-            *ndst++ = *nsrc++;
-            *ndst++ = *nsrc++;
-        }
-    }
-#endif
 
     glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
     ret = glUnmapBuffer (GL_ARRAY_BUFFER);
