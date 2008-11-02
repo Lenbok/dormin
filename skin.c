@@ -224,30 +224,37 @@ CAMLprim value ml_skin_init (value geom_v)
     CAMLreturn (Val_unit);
 }
 
-static void translate (State *s, float *dst)
+static void translate (State *s, float *vdst, float *ndst)
 {
     int i, j;
     struct bone *b;
-    float *curvert = s->ptrs[V_IDX];
+    float *vsrc = s->ptrs[V_IDX];
+    float *nsrc = s->ptrs[N_IDX];
     struct skin *skin = s->skin;
 
-    for (i = 0; i < s->num_vertices; ++i, curvert += 3, dst += 3, ++skin)
+    for (i = 0; i < s->num_vertices; ++i,
+             vsrc += 3, nsrc += 3, vdst += 3, ndst += 3, ++skin)
     {
-        float v[3] = {0,0,0}, v0[3], v1[3], v2[3], w, m[12];
+        float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], v2[3], w, m[12];
 
         for (j = 0; j < skin->num_bones; ++j) {
             w = skin->weights[j] + 0.000011;
             b = &s->bones[skin->boneindices[j]];
 
-            vsub (v0, curvert, b->mv);
+            vsub (v0, vsrc, b->mv);
             mapply_to_vector (v1, b->im, v0);
 
             mscale (m, b->am, w);
             mapply_to_point (v2, m, v1);
-
             vaddto (v, v2);
+
+            mapply_to_vector (v0, b->im, nsrc);
+            mapply_to_vector (v1, m, v0);
+            vaddto (n, v1);
         }
-        vcopy (dst, v);
+
+        vcopy (vdst, v);
+        vcopy (ndst, n);
     }
 
 }
@@ -361,7 +368,7 @@ CAMLprim value ml_skin_anim (value unit_v)
     vsrc = s->ptrs[V_IDX];
     nsrc = s->ptrs[N_IDX];
 
-    translate (s, vdst);
+    translate (s, vdst, ndst);
 #if 0
     {
         int i;
