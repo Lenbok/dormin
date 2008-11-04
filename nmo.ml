@@ -379,7 +379,7 @@ let draw geom =
       Skin.init (geom.vertexa, geom.normala, geom.uva, geom.skin, geom.colora)
     )
   in
-  fun textures lighting solid () ->
+  fun ~textures ~lighting ~solid ~colormaterial () ->
     let () = Lazy.force l in
     if true then (
       if textures then (
@@ -389,6 +389,9 @@ let draw geom =
         GlDraw.line_width 1.0;
         GlDraw.color (1., 1., 1.);
       );
+      if colormaterial then (
+        Gl.enable `color_material;
+      );
       if lighting then (
         Gl.enable `lighting;
         Gl.enable `light0;
@@ -396,19 +399,11 @@ let draw geom =
         GlTex.env (`mode `modulate);
         GlLight.light_model (`two_side false);
         GlDraw.shade_model `smooth;
-      ) else (
-        GlTex.env (`mode `replace);
-      );
-      if solid then (
-        GlDraw.polygon_mode `front `fill;
-        GlDraw.polygon_mode `back `fill;
       )
       else (
-        GlDraw.polygon_mode `front `line;
-        GlDraw.polygon_mode `back `line;
+        GlTex.env (`mode `replace);
       );
-
-      Skin.draw_begin ();
+      GlDraw.polygon_mode `both (if solid then `fill else `line);
 
       let rec f last_index surf = function
         | [] -> last_index
@@ -423,34 +418,43 @@ let draw geom =
             let last_index = f last_index surf counts in
             g last_index rest
       in
-      g 0 geom.surfaces;
 
+      Skin.draw_begin ();
+      (
+        g 0 geom.surfaces;
+      );
       Skin.draw_end ();
+
       Gl.disable `texture_2d;
       Gl.disable `lighting;
       Gl.disable `light0;
+      Gl.disable `color_material;
       GlDraw.shade_model `flat;
     );
 ;;
 
 let func geom =
   let draw = draw geom in
-  let rec subfunc dodraw textures lighting solid = function
-    | Rend.Char 't' ->
-        Rend.Func (subfunc dodraw (not textures) lighting solid)
-    | Rend.Char 'l' ->
-        Rend.Func (subfunc dodraw textures (not lighting) solid)
-    | Rend.Char 'w' ->
-        Rend.Func (subfunc dodraw textures lighting (not solid))
-    | Rend.Char 'm' ->
-        Rend.Func (subfunc (not dodraw) textures lighting solid)
-    | Rend.Draw ->
-        if dodraw then draw textures lighting solid ();
-        Rend.Func (subfunc dodraw textures lighting solid)
-    | Rend.Char _ ->
-        Rend.Func (subfunc dodraw textures lighting solid)
+  let rec subfunc dodraw ~textures ~lighting ~solid ~colormaterial =
+    let f
+        ?(textures=textures)
+        ?(lighting=lighting)
+        ?(solid=solid)
+        ?(colormaterial=colormaterial) dodraw =
+      Rend.Func (subfunc dodraw ~textures ~lighting ~solid ~colormaterial)
+    in
+    function
+      | Rend.Char 't' -> f ~textures:(not textures) dodraw
+      | Rend.Char 'l' -> f ~lighting:(not lighting) dodraw
+      | Rend.Char 'w' -> f ~solid:(not solid) dodraw
+      | Rend.Char 'c' -> f ~colormaterial:(not colormaterial) dodraw
+      | Rend.Char 'm' -> f (not dodraw)
+      | Rend.Draw when dodraw ->
+          draw ~textures ~lighting ~solid ~colormaterial ();
+          f dodraw
+      | Rend.Char _ | Rend.Draw -> f dodraw
   in
-  subfunc true false false false
+  subfunc true ~textures:false ~lighting:false ~solid:false ~colormaterial:false
 ;;
 
 let _ =
