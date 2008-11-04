@@ -26,7 +26,8 @@ type view =
     ; mutable help : bool
     ; mutable x : int
     ; mutable y : int
-    ; mutable mtype : [`none|`zoom|`rotate]
+    ; mutable mtype : [`none|`zoom|`rotate|`move]
+    ; mutable transl : (float * float * float)
     }
 
 let view =
@@ -48,6 +49,7 @@ let view =
   ; x = 0
   ; y = 0
   ; mtype = `none
+  ; transl = (0.0, 0.0, 0.0)
   }
 ;;
 
@@ -121,6 +123,7 @@ let help () =
     ;"", ""
     ;"Move mouse while holding left button pressed to rotate model", ""
     ;"Move mouse while holding right button pressed to zoom", ""
+    ;"Move mouse while holding left button and shift pressed to move model", ""
     ];
 
   Gl.enable `depth_test;
@@ -191,11 +194,11 @@ let setup w h =
   view.h <- h;
   GlDraw.viewport 0 0 w h;
 
-  let cx, cy, cz = view.center in
   let rs = view.zoom /. view.radial_scale in
 
   GlMat.mode `projection;
   GlMat.load_identity ();
+  GlMat.translate3 view.transl;
   GluMat.perspective
     ~fovy:45.0
     ~aspect:(float w /. float h)
@@ -212,14 +215,14 @@ let setup w h =
     ~up
   ;
 
-  GlMat.scale3 (rs, rs, rs);
-
   if not view.roteye then (
     GlMat.rotate ~angle:view.rotx ~x:1.0 ();
     GlMat.rotate ~angle:view.roty ~y:~-.1.0 ();
     GlMat.rotate ~angle:view.rotz ~z:1.0 ();
   );
-  GlMat.translate3 (cx, cy, cz);
+
+  GlMat.scale3 (rs, rs, rs);
+  GlMat.translate3 view.center;
 ;;
 
 let reshape ~w ~h =
@@ -291,6 +294,13 @@ let motion ~x ~y =
   view.x <- x;
   view.y <- y;
   match view.mtype with
+  | `move ->
+      let x, y, z = view.transl in
+      let dx = float dx /. 100.0
+      and dy = float dy /. 100.0 in
+      view.transl <- (x +. dx, y -. dy, z);
+      setup view.w view.h;
+      Glut.postRedisplay ();
   | `rotate ->
       view.rotx <- view.rotx +. float dy;
       view.roty <- view.roty -. float dx;
@@ -311,7 +321,9 @@ let mouse ~button ~state ~x ~y =
     then (
       view.x <- x;
       view.y <- y;
-      view.mtype <- `rotate;
+      view.mtype <-
+        if Glut.getModifiers () = Glut.active_shift
+        then `move else `rotate;
     )
     else view.mtype <- `none;
   )
