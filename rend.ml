@@ -45,7 +45,7 @@ let view =
   ; aincr = 3.0
   ; roteye = true
   ; sphere = false
-  ; help = true
+  ; help = false
   ; x = 0
   ; y = 0
   ; mtype = `none
@@ -114,6 +114,7 @@ let help () =
     ;" w", "toggle wireframe"
     ;" a", "toggle animation"
     ;" o", "toggle bounding sphere"
+    ;" c", "toggle color material"
     ;" f", "forward one frame"
     ;" b", "backward one frame"
     ;" r", "bring skeleton to rest pose and set frame number to 0"
@@ -345,7 +346,7 @@ let main () =
   let _ = Glut.init Sys.argv in
   let () = Glut.initDisplayMode ~depth:true ~double_buffer:true () in
   let () = Glut.initWindowSize w h in
-  let _ = Glut.createWindow "rend" in
+  let _ = Glut.createWindow "rend (press 'h' to get help)" in
   Gl.enable `depth_test;
   Gl.enable `alpha_test;
   GlFunc.alpha_func `greater 0.1;
@@ -385,5 +386,5 @@ let _ =
         else anb_name := Some s;
       ) else nmo_name := Some s;
     )
-    "Usage: dormin model.nmo [animation.anb]"
+    "Usage: dormin [options] model.nmo [animation.anb]"
 ;;
