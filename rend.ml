@@ -28,6 +28,7 @@ type view =
     ; mutable y : int
     ; mutable mtype : [`none|`zoom|`rotate|`move]
     ; mutable transl : (float * float * float)
+    ; mutable alpha : float
     }
 
 let view =
@@ -50,6 +51,7 @@ let view =
   ; y = 0
   ; mtype = `none
   ; transl = (0.0, 0.0, 0.0)
+  ; alpha = 0.0
   }
 ;;
 
@@ -121,6 +123,7 @@ let help () =
     ;" d", "dump images to dump.rgb"
     ;" z,x,arrows", "rotate"
     ;" 0,9", "zoom"
+    ;" <,>", "increase/decrease alpha"
     ;"", ""
     ;"Move mouse while holding left button pressed to rotate model", ""
     ;"Move mouse while holding right button pressed to zoom", ""
@@ -137,6 +140,7 @@ let display () =
   GlClear.color (0.5, 0.5, 0.5) ~alpha:1.0;
   GlClear.clear [`color; `depth];
   GlDraw.color (0.0, 0.0, 0.0);
+  GlFunc.alpha_func `greater view.alpha;
 
   if view.sphere then (
     let cx, cy, cz = view.center in
@@ -271,6 +275,8 @@ let keyboard ~key ~x ~y =
         Glut.idleFunc (Some idle)
       )
   | 'f' | 'b' when not view.animated -> allfunc (Char (Char.chr key))
+  | '<' -> view.alpha <- min (view.alpha +. 0.01) 1.0;
+  | '>' -> view.alpha <- max (view.alpha -. 0.01) 0.0;
   | c -> allfunc (Char c)
   end;
   setup view.w view.h;
@@ -349,7 +355,6 @@ let main () =
   let _ = Glut.createWindow "rend (press 'h' to get help)" in
   Gl.enable `depth_test;
   Gl.enable `alpha_test;
-  GlFunc.alpha_func `greater 0.1;
   let () = Glut.displayFunc display in
   let () = Glut.reshapeFunc reshape in
   let () = Glut.keyboardFunc keyboard in
