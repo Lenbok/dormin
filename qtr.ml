@@ -50,7 +50,7 @@ let from_axis_angle x y z phi =
   let mag = sqrt (x * x + y * y + z * z) in
   let s = sin phi / mag in
   let x = x * s and y = y * s and z = z * s in
-  { i = z; j = y; k = x; s = cos phi }
+  { i = x; j = y; k = z; s = cos phi }
 
 let to_norm_axis_angle q =
   let magsq = q.i * q.i + q.j * q.j + q.k * q.k in
