@@ -390,7 +390,15 @@ let draw geom =
         GlDraw.color (1., 1., 1.);
       );
       if colormaterial then (
+        GlLight.light 0 (`ambient (let c = 1.0 in (c,c,c,1.)));
+        GlLight.light 0 (`diffuse (let c = 0.0 in (c,c,c,1.)));
         Gl.enable `color_material;
+      )
+      else (
+        GlLight.light 0 (`ambient (let c = 0.0 in (c,c,c,1.)));
+        GlLight.light 0 (`diffuse (let c = 1.0 in (c,c,c,1.)));
+        GlLight.material `both (`ambient (0.2, 0.2, 0.2, 1.0));
+        GlLight.material `both (`diffuse (0.8, 0.8, 0.8, 1.0));
       );
       if lighting then (
         Gl.enable `lighting;
@@ -398,7 +406,6 @@ let draw geom =
         Gl.enable `normalize;
         GlTex.env (`mode `modulate);
         GlLight.light_model (`two_side false);
-        GlDraw.shade_model `smooth;
       )
       else (
         GlTex.env (`mode `replace);
@@ -429,7 +436,6 @@ let draw geom =
       Gl.disable `lighting;
       Gl.disable `light0;
       Gl.disable `color_material;
-      GlDraw.shade_model `flat;
     );
 ;;
 
