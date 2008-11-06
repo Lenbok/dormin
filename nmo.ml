@@ -460,7 +460,7 @@ let func geom =
           f dodraw
       | Rend.Char _ | Rend.Draw -> f dodraw
   in
-  subfunc true ~textures:false ~lighting:false ~solid:false ~colormaterial:false
+  subfunc true ~textures:false ~lighting:false ~solid:true ~colormaterial:false
 ;;
 
 let _ =
