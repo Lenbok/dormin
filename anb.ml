@@ -43,7 +43,8 @@ let quat3456 typ posecount sectbuf sbuf =
   let int32s = Array.init posecount (fun i -> Xff.r32 sbuf32 (i*4)) in
   let madd v n = v*.floats.(n*2 + 1) +. floats.(n*2) in
   let omsqrt a b c mask =
-    let v = sqrt (1. -. (a*.a +. b*.b +. c*.c)) in
+    let m = a*.a +. b*.b +. c*.c in
+    let v = if m >= 1.0 then 0.0 else sqrt (1. -. m) in
     if mask land 0b10000 != 0 then -.v else v
   in
   let toquat poseno =
