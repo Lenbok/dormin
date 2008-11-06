@@ -467,7 +467,7 @@ let _ =
   let name =
     match !Rend.nmo_name with
     | None -> failwith "must supply model name"
-    | Some s -> s
+    | Some s -> Filename.basename s
   in
   let x, sbuf = Xff.test2 name in
   let geom = r x sbuf in
