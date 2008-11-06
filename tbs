@@ -26,7 +26,7 @@ cc="cc"
 ccopt="-O"
 test $(hostname) = "linmac" && {
     cc="$HOME/x/dev/gcc-4.3.0/bin/gcc";
-    ccopt="-Wall -Werror -Wextra -O3 -maltivec";
+    ccopt="-Wall -Werror -Wextra -O3 -maltivec -Wno-unused-function";
 }
 
 targets="dormin"

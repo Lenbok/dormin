@@ -235,7 +235,7 @@ CAMLprim value ml_skin_set_skel (value skel_v)
 
     b = s->bones + 1;
     for (i = 0; i < s->num_bones; ++i, ++b) {
-        float v[3], q[4], q1[4], z[3] = {0,0,0};
+        float v[3], q[4], z[3] = {0,0,0};
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->mq, b->v);
@@ -243,8 +243,7 @@ CAMLprim value ml_skin_set_skel (value skel_v)
         vadd (b->mv, v, parent->mv);
 
         qconjugate (q, b->mq);
-        qscale (q1, q, 1.0 / qmagnitude (q));
-        q2matrix (b->im, q1, z);
+        q2matrix (b->im, q, z);
     }
 
     CAMLreturn (Val_unit);
