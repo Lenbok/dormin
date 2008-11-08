@@ -37,7 +37,7 @@ let expand =
 ;;
 
 let quat3456 typ posecount sectbuf sbuf =
-  let floats = Array.init posecount (fun i -> Xff.rfloat sbuf (i*4)) in
+  let floats = Array.init 8 (fun i -> Xff.rfloat sbuf (i*4)) in
   let offset = Xff.rint sbuf 32 in
   let sbuf32 = Xff.sbufplus sectbuf offset in
   let int32s = Array.init posecount (fun i -> Xff.r32 sbuf32 (i*4)) in
