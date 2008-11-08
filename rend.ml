@@ -226,7 +226,7 @@ let setup w h =
     GlMat.rotate ~angle:view.rotz ~z:1.0 ();
   );
 
-  GlMat.scale3 (rs, rs, rs);
+  GlMat.scale3 (-.rs, rs, rs);
   GlMat.translate3 view.center;
 ;;
 
