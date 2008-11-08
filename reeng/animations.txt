@@ -66,12 +66,21 @@ When flag is 3,4,5,6:
 ----------------------------------------------------------------------
 When flag is 12:
  Data contains: 6 floating point numbers and an array of M 48 bit
- values. (Looks as if every 48 bit value is a tuple of three 16 bit
- values)
+ values.
 
  Floating pints form 3 pairs, constraint:
   first pair member (-1, 1)
   second            [ 0, 1)
+
+ Each 48 bit value is a tuple of 3 signed 16 bit fields (I,J,K),
+ quaternion is obtained like this:
+
+ i = madd (I / 32768.0, pairs[0].first, pairs[0].second);
+ j = madd (J / 32768.0, pairs[1].first, pairs[1].second);
+ k = madd (K / 32768.0, pairs[2].first, pairs[2].second);
+ s = sqrt (1 - magnitude (i, j, k));
+ if (i & 1) s = -s;
+ quat q = (i, j, k, s) 
 
 ----------------------------------------------------------------------
 When flag is 13:

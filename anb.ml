@@ -85,16 +85,16 @@ let quat12 posecount sectbuf sbuf =
   let madd v n =
     float v /. 32768.0 *. floats.(n*2 + 1) +. floats.(n*2)
   in
-  eprintf "quat12 is dead wrong@.";
   let toquat poseno =
     let a = Xff.r16s sbuf16 (poseno*6 + 0)
     and b = Xff.r16s sbuf16 (poseno*6 + 2)
     and c = Xff.r16s sbuf16 (poseno*6 + 4) in
-    let yaw = madd a 0
-    and pitch = madd b 1
-    and roll = madd c 2 in
-    (* wrong *)
-    Qtr.from_euler yaw pitch roll
+    let sign = a land 1 = 1 in
+    let i = madd a 0
+    and j = madd b 1
+    and k = madd c 2 in
+    let s = sqrt (1.0 -. (i*.i +. j*.j +. k*.k)) in
+    Qtr.make i j k (if sign then -.s else s)
   in
   Array.init posecount toquat
 ;;
