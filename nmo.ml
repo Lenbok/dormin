@@ -337,16 +337,22 @@ let r xff sbufxff =
             let nto = text.nto in
             let id = GlTex.gen_texture () in
             GlTex.bind_texture `texture_2d id;
-            GlTex.parameter `texture_2d (`min_filter `linear);
             GlTex.parameter `texture_2d (`mag_filter `linear);
+            if !Rend.mipmaps then (
+              GlTex.parameter `texture_2d (`min_filter `linear_mipmap_linear);
+              GlTex.parameter `texture_2d (`generate_mipmap true);
+            )
+            else (
+              GlTex.parameter `texture_2d (`min_filter `linear);
+            );
             GlTex.parameter `texture_2d (`wrap_s `repeat);
             GlTex.parameter `texture_2d (`wrap_t `repeat);
-            Array.iteri
-              (fun level (w, h, data) ->
-                let raw = Raw.of_string data `ubyte in
-                let pix = GlPix.of_raw raw `rgba w h in
-                GlTex.image2d ~level pix)
-              nto;
+            let image2d level (w, h, data) =
+              let raw = Raw.of_string data `ubyte in
+              let pix = GlPix.of_raw raw `rgba w h in
+              GlTex.image2d ~level pix
+            in
+            if !Rend.mipmaps then Array.iteri image2d nto else image2d 0 nto.(0);
             id
           )
       ) texts

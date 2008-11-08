@@ -4,6 +4,7 @@ and func_ret = Func of func
 
 let nmo_name = ref None
 let anb_name = ref None
+let mipmaps = ref false
 
 type view =
     { mutable w : int
@@ -381,6 +382,7 @@ let _ =
     ["-slice", Arg.String Slice.openslice, " <path> of file to slice data to"
     ;"-index", Arg.Set_string Xff.index_path, " <path> of index"
     ;"-base", Arg.String (setsome Xff.base_path), " <directory> base"
+    ;"-mipmaps", Arg.Set mipmaps, "use mipmaps"
     ]
   in
   Arg.parse (Arg.align spec)
