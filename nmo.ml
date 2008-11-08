@@ -24,7 +24,7 @@ type surf1 =
 
 type tex =
     { texname : string
-    ; nto : (int * int * string)
+    ; nto : (int * int * string) array
     ; int5 : int32 array
     ; half1 : int array
     ; w : int
@@ -335,17 +335,18 @@ let r xff sbufxff =
         lazy
           (
             let nto = text.nto in
-            let (_, _, data) = nto in
-
             let id = GlTex.gen_texture () in
-            let raw = Raw.of_string data `ubyte in
-            let pix = GlPix.of_raw raw `rgba text.w text.h in
             GlTex.bind_texture `texture_2d id;
             GlTex.parameter `texture_2d (`min_filter `linear);
             GlTex.parameter `texture_2d (`mag_filter `linear);
             GlTex.parameter `texture_2d (`wrap_s `repeat);
             GlTex.parameter `texture_2d (`wrap_t `repeat);
-            GlTex.image2d pix;
+            Array.iteri
+              (fun level (w, h, data) ->
+                let raw = Raw.of_string data `ubyte in
+                let pix = GlPix.of_raw raw `rgba w h in
+                GlTex.image2d ~level pix)
+              nto;
             id
           )
       ) texts

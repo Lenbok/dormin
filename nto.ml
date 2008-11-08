@@ -31,12 +31,12 @@ let r xff sbufxff ?dim () =
         w, h
   in
   let mipmaps = Xff.r8 ntobuf 29 in
-  let _mipmaps = mipmaps lsr 4 in
+  let mipmaps = mipmaps lsr 4 in
   let swz = Xff.r8 ntobuf 31 in
 
-  if false then
+  if true then
     printf "%dx%d kind=%d mipmaps=%d swz=%d@."
-      w h kind _mipmaps swz
+      w h kind mipmaps swz
   ;
 
   let to_rgba swz =
@@ -44,7 +44,7 @@ let r xff sbufxff ?dim () =
     to_rgba s (p+pixpos, p+palpos) (w, h) swz
   in
 
-  let rgba =
+  let rgba w h =
     match kind with
     | 0x00 ->                           (* 32 bit *)
         let len = w * h * 4 in
@@ -65,5 +65,8 @@ let r xff sbufxff ?dim () =
     | _ ->
         Xff.sbuferr ntobuf 28 "invalid kind"
   in
-  w, h, rgba
+  Array.init mipmaps
+    (fun i ->
+      let w = w lsr i and h = h lsr i in
+      w, h, rgba w h)
 ;;
