@@ -172,12 +172,14 @@ static void translate (State *s, float *vdst, float *ndst)
     for (i = 0; i < s->num_vertices; ++i,
              vsrc += 3, nsrc += 3, vdst += 3, ndst += 3, ++skin)
     {
+        int z = 0;
         float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], v2[3], w, m[12];
 
         for (j = 0; j < skin->num_bones; ++j) {
             w = skin->weights[j] + 0.000011;
             b = &s->bones[skin->boneindices[j]];
 
+            if (w < 0.0) z = 1;
             vsub (v0, vsrc, b->mv);
             mapply_to_vector (v1, b->im, v0);
 
@@ -190,6 +192,8 @@ static void translate (State *s, float *vdst, float *ndst)
             vaddto (n, v1);
         }
 
+        /* hack hack */
+        if (z) vcopy (v, vsrc);
         vcopy (vdst, v);
         vcopy (ndst, n);
     }
