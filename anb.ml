@@ -5,7 +5,7 @@ let quat0 posecount sbuf =
   and j = Xff.rfloat sbuf 4
   and k = Xff.rfloat sbuf 8
   and s = Xff.rfloat sbuf 12 in
-  let q = { Qtr.i = i; j = j; k = k; s = s } in
+  let q = Qtr.make i j k s in
   Array.create posecount q
 ;;
 
