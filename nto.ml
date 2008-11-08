@@ -34,7 +34,7 @@ let r xff sbufxff ?dim () =
   let mipmaps = mipmaps lsr 4 in
   let swz = Xff.r8 ntobuf 31 in
 
-  if true then
+  if false then
     printf "%dx%d kind=%d mipmaps=%d swz=%d@."
       w h kind mipmaps swz
   ;
