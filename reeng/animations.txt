@@ -79,7 +79,7 @@ When flag is 12:
  j = madd (J / 32768.0, pairs[1].first, pairs[1].second);
  k = madd (K / 32768.0, pairs[2].first, pairs[2].second);
  s = sqrt (1 - magnitude (i, j, k));
- if (i & 1) s = -s;
+ if (I & 1) s = -s;
  quat q = (i, j, k, s) 
 
 ----------------------------------------------------------------------
