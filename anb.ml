@@ -9,71 +9,55 @@ let quat0 posecount sbuf =
   Array.create posecount q
 ;;
 
-let expand =
-  let bits =
-    [|[|5; 9; 9; 9|]; [|9; 5; 9; 9|]; [|9; 9; 5; 9|]; [|9; 9; 9; 5|]|]
-  in
-  fun int32 typ ->
-    let toint shift mask =
-      let i = (Int32.to_int (Int32.shift_right_logical int32 shift)) land mask in
-      let i = i - ((i land ((mask + 1) lsr 1)) lsl 1) in
-      i
-    in
-    let bits = bits.(typ - 3) in
-    let shifts =
-      [| 32 - bits.(0)
-      ;  32 - bits.(0) - bits.(1)
-      ;  32 - bits.(0) - bits.(1) - bits.(2)
-      ;  0
-      |]
-    in
-    let toint i = (toint shifts.(i) ((1 lsl bits.(i)) - 1)) in
-    let tofloat i = float (toint i) /. float (1 lsl (bits.(i) - 1)) in
-    let a = tofloat 0
-    and b = tofloat 1
-    and c = tofloat 2
-    and d = tofloat 3 in
-    (a, b, c, d, toint (typ - 3))
-;;
-
 let quat3456 typ posecount sectbuf sbuf =
   let floats = Array.init 8 (fun i -> Xff.rfloat sbuf (i*4)) in
   let offset = Xff.rint sbuf 32 in
   let sbuf32 = Xff.sbufplus sectbuf offset in
   let int32s = Array.init posecount (fun i -> Xff.r32 sbuf32 (i*4)) in
-  let madd v n = v*.floats.(n*2 + 1) +. floats.(n*2) in
-  let omsqrt a b c mask =
-    let m = a*.a +. b*.b +. c*.c in
-    let v = if m >= 1.0 then 0.0 else sqrt (1. -. m) in
-    if mask land 0b10000 != 0 then -.v else v
-  in
   let toquat poseno =
-    let i, j, k, s, mask = expand int32s.(poseno) typ in
+    let cq = int32s.(poseno) in
+    let omsqrt a b c bitno =
+      let v = 1.0 -. (a*.a +. b*.b +. c*.c) in
+      if v > 1e-9
+      then
+        let r = sqrt v in
+        if Int32.to_int (Int32.shift_right_logical cq bitno) land 1 = 1
+        then -.r
+        else r
+      else
+        0.0
+    in
+    let nbf shift n =
+      let i = 511 land Int32.to_int (Int32.shift_right_logical cq shift) in
+      let i = i - ((i land 0b100000000) lsl 1) in
+      let f = float i /. 256.0 in
+      f*.floats.(n*2 + 1) +. floats.(n*2)
+    in
     let i, j, k, s =
       match typ with
       | 3 ->
-          let j = madd j 0
-          and k = madd k 1
-          and s = madd s 2 in
-          (omsqrt j k s mask, j, k, s)
+          let j = nbf 18 0
+          and k = nbf  9 1
+          and s = nbf  0 2 in
+          (omsqrt j k s 31, j, k, s)
       | 4 ->
-          let i = madd i 0
-          and k = madd k 1
-          and s = madd s 2 in
-          (i, omsqrt i k s mask, k, s)
+          let i = nbf 23 0
+          and k = nbf  9 1
+          and s = nbf  0 2 in
+          (i, omsqrt i k s 22, k, s)
       | 5 ->
-          let i = madd i 0
-          and j = madd j 1
-          and s = madd s 2 in
-          (i, j, omsqrt i j s mask, s)
+          let i = nbf 23 0
+          and j = nbf 14 1
+          and s = nbf  0 2 in
+          (i, j, omsqrt i j s 13, s)
       | 6 ->
-          let i = madd i 0
-          and j = madd j 1
-          and k = madd k 2 in
-          (i, j, k, omsqrt i j k mask)
+          let i = nbf 23 0
+          and j = nbf 14 1
+          and k = nbf  5 2 in
+          (i, j, k, omsqrt i j k 4)
       | _ -> failwith "Me fail english? That's Umpossible!"
     in
-    { Qtr.i = i; j = j; k = k; s = s }
+    Qtr.make i j k s
   in
   Array.init posecount toquat
 ;;
@@ -93,7 +77,8 @@ let quat12 posecount sectbuf sbuf =
     let i = madd a 0
     and j = madd b 1
     and k = madd c 2 in
-    let s = sqrt (1.0 -. (i*.i +. j*.j +. k*.k)) in
+    let m = 1.0 -. (i*.i +. j*.j +. k*.k) in
+    let s = if m > 1e-9 then sqrt m else 0.0 in
     Qtr.make i j k (if sign then -.s else s)
   in
   Array.init posecount toquat
