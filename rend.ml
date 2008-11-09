@@ -132,6 +132,8 @@ let help () =
     ;" b", "backward one frame"
     ;" r", "bring skeleton to rest pose and set frame number to 0"
     ;" d", "dump images to dump.rgb"
+    ;" B", "play animation backwards"
+    ;" S", "switch skeleton type"
     ;" z,x,arrows", "rotate"
     ;" 0,9", "zoom"
     ;" 1,2", "go to first/last pose"
@@ -394,11 +396,11 @@ let init minmax =
 let _ =
   let setsome r s = r := Some s in
   let spec =
-    ["-slice", Arg.String Slice.openslice, " <path> of file to slice data to"
-    ;"-index", Arg.Set_string Xff.index_path, " <path> of index"
-    ;"-base", Arg.String (setsome Xff.base_path), " <directory> base"
-    ;"-mipmaps", Arg.Set mipmaps, "use mipmaps"
+    ["-slice", Arg.String Slice.openslice, "<path> of file to slice data to"
+    ;"-index", Arg.Set_string Xff.index_path, "<path> of index"
+    ;"-base", Arg.String (setsome Xff.base_path), "<directory> base"
     ;"-sstep", Arg.Set_float slerp_step, "<float> slerp step"
+    ;"-mipmaps", Arg.Set mipmaps, " use mipmaps"
     ]
   in
   Arg.parse (Arg.align spec)
