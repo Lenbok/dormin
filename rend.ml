@@ -101,6 +101,7 @@ let help () =
   Gl.disable `depth_test;
   Gl.disable `alpha_test;
 
+  GlDraw.polygon_mode `both `fill;
   Gl.enable `blend;
   GlFunc.blend_func `src_alpha `one_minus_src_alpha;
   GlDraw.color (0., 0., 0.) ~alpha:0.3;
