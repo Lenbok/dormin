@@ -135,16 +135,13 @@ let func bones anim =
       then
         let sposeno = dposeno
         and dposeno = clip (dposeno + dir) in
-        subf ~quats ~sposeno ~dposeno ~t:(if dir > 0 then 0.0 else 1.0) ()
+        subf ~quats ~sposeno ~dposeno ~t:0.0 ()
       else
         subf ~quats ~sposeno ~dposeno ~t ()
     in
     function
       | Rend.Char ('n' | 'f' | 'b' as c) ->
-          let quats =
-            Anb.interpolated rotations sposeno dposeno
-              (if c = 'b' then 1.0 -. t else t)
-          in
+          let quats = Anb.interpolated rotations sposeno dposeno t in
           animate quats;
           advance quats
             (match c with
