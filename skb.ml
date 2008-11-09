@@ -74,9 +74,11 @@ let draw bones =
       GlDraw.color (0., 0., 1.);
       Gl.disable  `depth_test;
       for i = 0 to Array.length bones - 1 do
-        (* GlDraw.line_width 0.1; *)
         let v0, v1 = rta.(i) in
-        if dsphere then sphere v1;
+        if dsphere then (
+          GlDraw.line_width 0.1;
+          sphere v1;
+        );
         GlDraw.line_width 2.0;
         GlDraw.begins `lines;
         GlDraw.vertex3 v0;

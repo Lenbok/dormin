@@ -174,6 +174,7 @@ let display () =
   if view.sphere then (
     let cx, cy, cz = view.center in
     let cx = -.cx and cy = -.cy and cz = -.cz in
+    GlDraw.line_width 1.0;
     GlMat.mode `modelview;
     GlMat.push ();
     GlMat.translate3 (cx, cy, cz);
