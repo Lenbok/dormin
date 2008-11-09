@@ -85,7 +85,6 @@ let help () =
     GlPix.raster_pos ~x ~y ();
     String.iter (fun c -> Glut.bitmapCharacter ~font ~c:(Char.code c)) s
   in
-  GlDraw.color (0., 0., 0.);
   GlMat.mode `projection;
   GlMat.push ();
   GlMat.load_identity ();
@@ -97,7 +96,16 @@ let help () =
     ~y:(0.0, float view.h)
     ~z:(-1., 1.)
   ;
+
+  Gl.enable `blend;
+  GlFunc.blend_func `src_alpha `one_minus_src_alpha;
+  GlDraw.color (0., 0., 0.) ~alpha:0.3;
+  GlDraw.rect (0., 0.) (float view.w, float view.h);
+  Gl.disable `blend;
+
   Gl.disable `depth_test;
+  Gl.disable `alpha_test;
+  GlDraw.color (1., 1., 1.);
   let rec loop row = function
     | [] -> ()
     | (s, s2) :: rest ->
@@ -132,6 +140,7 @@ let help () =
     ];
 
   Gl.enable `depth_test;
+  Gl.enable `alpha_test;
   GlMat.pop ();
   GlMat.mode `projection;
   GlMat.pop ();
