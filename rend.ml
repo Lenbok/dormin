@@ -63,9 +63,9 @@ let view =
 let deg2rad deg = deg /. 180.0 *. acos ~-.1.;;
 
 let center_and_radial_scale (minx, maxx, miny, maxy, minz, maxz) =
-  let xc = (maxx -. minx) /. 2.0 +. minx in
-  let yc = (maxy -. miny) /. 2.0 +. miny in
-  let zc = (maxz -. minz) /. 2.0 +. minz in
+  let xc = (maxx +. minx) /. 2.0 in
+  let yc = (maxy +. miny) /. 2.0 in
+  let zc = (maxz +. minz) /. 2.0 in
   let rs =
     let rs = maxx -. minx in
     let rs = max rs (maxy -. miny) in
