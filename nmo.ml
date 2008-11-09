@@ -504,7 +504,7 @@ let _ =
     let x = geom.vertexa.(0) in
     let y = geom.vertexa.(1) in
     let z = geom.vertexa.(2) in
-    f (x, y, z, x, y, z) 3
+    f (x, x, y, y, z, z) 3
   in
   Skb.main name;
   Rend.add_func (func geom);
