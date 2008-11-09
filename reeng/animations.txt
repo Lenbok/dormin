@@ -75,10 +75,10 @@ When flag is 12:
  Each 48 bit value is a tuple of 3 signed 16 bit fields (I,J,K),
  quaternion is obtained like this:
 
- i = madd (I / 32768.0, pairs[0].first, pairs[0].second);
- j = madd (J / 32768.0, pairs[1].first, pairs[1].second);
- k = madd (K / 32768.0, pairs[2].first, pairs[2].second);
- s = sqrt (1 - magnitude (i, j, k));
+ i = madd(I / 32768.0, pairs[0].first, pairs[0].second);
+ j = madd(J / 32768.0, pairs[1].first, pairs[1].second);
+ k = madd(K / 32768.0, pairs[2].first, pairs[2].second);
+ s = sqrt(1 - magnitude (i, j, k));
  if (I & 1) s = -s;
  quat q = (i, j, k, s) 
 
@@ -93,5 +93,5 @@ When flag is 13:
   [2..4] - axis
 
  From these one can obtain quaternion like this:
-  float radians = madd(16bitint / 32767.0, float[1], float[0])
+  float radians = madd(16bitint / 32768.0, float[1], float[0])
   quat q = from_axis_angle(axis, radians);
