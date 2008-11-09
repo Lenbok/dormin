@@ -116,7 +116,18 @@ let func bones anim =
         ?(t=t)
         ?(quats=quats)
         ?(dir=dir) () =
-      Rend.Func (subfunc drawindex quats sposeno dposeno t dir)
+      let hf () =
+        ["s", "toggle skeleton", (if drawindex = 0 then "off" else "on")
+        ;"S", "skeleton type", string_of_int (drawindex mod 3)
+        ;"B", sprintf "toggle animation direction", string_of_int dir
+        ;"f", "forward one frame", sprintf "%d, %f" sposeno t
+        ;"b", "backward one frame", sprintf "%d, %f" sposeno t
+        ;"", "", "total frames " ^ string_of_int posecount
+        ;"r", "go to bind pose", ""
+        ;"1,2", "go to first/last pose", ""
+        ]
+      in
+      Rend.Func (subfunc drawindex quats sposeno dposeno t dir, hf)
     in
     let advance quats dir =
       let t = t +. !Rend.slerp_step in
@@ -177,10 +188,14 @@ let func bones anim =
 ;;
 
 let dummy draw =
-  let rec subfunc dodraw = function
-    | Rend.Draw -> if dodraw then draw (); Rend.Func (subfunc dodraw)
-    | Rend.Char 's' -> Rend.Func (subfunc (not dodraw))
-    | _ -> Rend.Func (subfunc dodraw)
+  let rec subfunc dodraw =
+    let hf () =
+      ["s", "toggle skeleton", if dodraw then "on" else "off"]
+    in
+    function
+      | Rend.Draw -> if dodraw then draw (); Rend.Func (subfunc dodraw, hf)
+      | Rend.Char 's' -> Rend.Func (subfunc (not dodraw), hf)
+      | _ -> Rend.Func (subfunc dodraw, hf)
   in
   subfunc false
 ;;

@@ -1,6 +1,7 @@
 type cmd = | Char of char | Draw;;
 type func = cmd -> func_ret
-and func_ret = Func of func
+and helpfunc = (unit -> (string * string * string) list)
+and func_ret = Func of (func * helpfunc)
 
 let nmo_name = ref None
 let anb_name = ref None
@@ -17,6 +18,7 @@ type view =
     ; mutable center : (float * float * float)
     ; mutable radial_scale : float
     ; mutable func : func list
+    ; mutable helpfunc : helpfunc list
     ; mutable persp : bool
     ; mutable last_time : float
     ; mutable animated : bool
@@ -40,6 +42,7 @@ let view =
   ; radial_scale = 0.0
   ; zoom = 1.0
   ; func = []
+  ; helpfunc = []
   ; persp = true
   ; last_time = 0.0
   ; animated = false
@@ -111,40 +114,49 @@ let help () =
   GlDraw.color (1., 1., 1.);
   let rec loop row = function
     | [] -> ()
-    | (s, s2) :: rest ->
+    | (s, s2, s3) :: rest ->
         let y = view.h - row * 18 - 2 in
-        draw_string 5.0 (float y) s;
-        draw_string 105.0 (float y) s2;
+        let x = if row = 1 then 0.0 else 5.0 in
+        draw_string (x+.5.0) (float y) s;
+        draw_string (x+.105.0) (float y) s2;
+        draw_string (x+.345.0) (float y) s3;
         loop (row+1) rest
   in
+  let help =
+    let onoff b = if b then "on" else "off" in
+    let angles =
+      Printf.sprintf "% f, % f, % f" view.rotx view.roty view.rotz
+    in
+    [("Keys:", "", "")
+    ;"h", "toggle help", ""
+    ;"e", "toggle eye/model rotation", if view.roteye then "eye" else "model"
+    ;"a", "toggle animation", onoff view.animated
+    ;"o", "toggle bounding sphere", onoff view.sphere
+    ;"d", "dump images to dump.rgb", onoff view.dodump
+    ;"q, ESC", "quit", ""
+    ;"z,x,arrows", "rotate", angles
+    ;"0,9", "zoom", Printf.sprintf "%f" view.zoom
+    ;"1,2", "go to first/last pose", ""
+    ;"< , >", "decrease/increase alpha", Printf.sprintf "%1.2f" view.alpha
+    ;"[ , ]", "decrease/increase slerp step", Printf.sprintf "%2.1f" !slerp_step
+    ;"","",""
+    ]
+  in
+  let help =
+    List.fold_left (fun accu hf -> accu @ hf ()) help view.helpfunc
+  in
   loop 1
-    [("Keys:", "")
-    ;" h", "toggle help"
-    ;" e", "toggle eye/model rotation"
-    ;" s", "toggle skeleton"
-    ;" t", "toggle texturing"
-    ;" l", "toggle lighting"
-    ;" m", "toggle model"
-    ;" w", "toggle wireframe"
-    ;" a", "toggle animation"
-    ;" o", "toggle bounding sphere"
-    ;" c", "toggle color material"
-    ;" f", "forward one frame"
-    ;" b", "backward one frame"
-    ;" r", "bring skeleton to rest pose and set frame number to 0"
-    ;" d", "dump images to dump.rgb"
-    ;" B", "play animation backwards"
-    ;" S", "switch skeleton type"
-    ;" z,x,arrows", "rotate"
-    ;" 0,9", "zoom"
-    ;" 1,2", "go to first/last pose"
-    ;" < , >", (Printf.sprintf "decrease/increase alpha (%1.2f)" view.alpha)
-    ;" [ , ]", (Printf.sprintf "decrease/increase slerp step (%2.1f)" !slerp_step)
-    ;"", ""
-    ;"Move mouse while holding left button pressed to rotate model", ""
-    ;"Move mouse while holding right button pressed to zoom", ""
-    ;"Move mouse while holding left button and shift pressed to move model", ""
-    ];
+    (help @
+        ["", "", ""
+        ;"Move mouse while holding left button pressed to rotate model", "", ""
+        ;"Move mouse while holding right button pressed to zoom", "", ""
+        ;"Move mouse while holding left button and shift pressed to move model", "", ""
+        ;"",
+        (let tx, ty, tz = view.transl in
+          Printf.sprintf "translation % f, % f, % f" tx ty tz),
+        ""
+        ])
+  ;
 
   Gl.enable `depth_test;
   Gl.enable `alpha_test;
@@ -252,7 +264,13 @@ let reshape ~w ~h =
 ;;
 
 let allfunc cmd =
-  view.func <- List.map (fun f -> let Func fr = f cmd in fr)  view.func;
+  let f, h =
+    List.split (
+      List.map (fun f -> let Func (fr, hf) = f cmd in fr, hf) view.func
+    )
+  in
+  view.func <- f;
+  view.helpfunc <-h;
 ;;
 
 let idle () =
@@ -265,7 +283,7 @@ let idle () =
   else
     view.last_time <- view.last_time +. 0.04
   ;
-  view.func <- List.map (fun f -> let Func fr = f (Char 'n') in fr)  view.func;
+  allfunc (Char 'n');
   Glut.postRedisplay ();
 ;;
 
@@ -380,6 +398,7 @@ let main () =
   let () = Glut.specialFunc special in
   let () = Glut.mouseFunc mouse in
   let () = Glut.motionFunc motion in
+  allfunc (Char '\000');
   let () = Glut.mainLoop () in
   ()
 ;;

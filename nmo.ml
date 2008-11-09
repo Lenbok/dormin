@@ -448,13 +448,22 @@ let draw geom =
 
 let func geom =
   let draw = draw geom in
+  let onoff c s b = c, "toggle " ^ s, if b then "on" else "off" in
   let rec subfunc dodraw ~textures ~lighting ~solid ~colormaterial =
     let f
         ?(textures=textures)
         ?(lighting=lighting)
         ?(solid=solid)
         ?(colormaterial=colormaterial) dodraw =
-      Rend.Func (subfunc dodraw ~textures ~lighting ~solid ~colormaterial)
+      let hf () =
+        [onoff "t""textures" textures
+        ;onoff "l" "lighting" lighting
+        ;onoff "w" "wireframe" (not solid)
+        ;onoff "c" "color material" colormaterial
+        ;onoff "m" "model" dodraw
+        ]
+      in
+      Rend.Func (subfunc dodraw ~textures ~lighting ~solid ~colormaterial, hf)
     in
     function
       | Rend.Char 't' -> f ~textures:(not textures) dodraw
