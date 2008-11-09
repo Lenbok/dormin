@@ -20,18 +20,19 @@ struct skin {
 
 struct bone {
     int parent;
-    float v[3];
-    float q[4];
 
-    float mv[3];
+    float v[4] A16;
+    float q[4] A16;
+
+    float mv[4] A16;
     float mq[4];
 
     float aq[4];
     float amq[4];
-    float amv[3];
+    float amv[4];
 
-    float am[12];
-    float im[12];
+    float am[16] A16;
+    float im[16] A16;
 };
 
 typedef struct {
@@ -173,7 +174,16 @@ static void translate (State *s, float *vdst, float *ndst)
              vsrc += 3, nsrc += 3, vdst += 3, ndst += 3, ++skin)
     {
         int z = 0;
-        float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], v2[3], w, m[12];
+#ifdef USE_ALTIVEC
+        float v[4] A16 = {0,0,0,0}, n[4] A16= {0,0,0,0};
+        float v0[4] A16, v1[4] A16, m[16] A16, n1[4];
+        float w;
+
+        vcopy (n1, nsrc);
+#else
+        float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], w, m[12];
+        float *n1 = nsrc;
+#endif
 
         for (j = 0; j < skin->num_bones; ++j) {
             w = skin->weights[j];
@@ -184,10 +194,10 @@ static void translate (State *s, float *vdst, float *ndst)
             mapply_to_vector (v1, b->im, v0);
 
             mscale (m, b->am, w);
-            mapply_to_point (v2, m, v1);
-            vaddto (v, v2);
+            mapply_to_point (v0, m, v1);
+            vaddto (v, v0);
 
-            mapply_to_vector (v0, b->im, nsrc);
+            mapply_to_vector (v0, b->im, n1);
             mapply_to_vector (v1, m, v0);
             vaddto (n, v1);
         }
@@ -211,7 +221,7 @@ CAMLprim value ml_skin_set_skel (value skel_v)
 
     s->num_bones = Wosize_val (skel_v);
     size = (s->num_bones + 1) * sizeof (struct bone);
-    s->bones = b = stat_alloc (size);
+    s->bones = b = simd_alloc (16, size);
 
     memset (b, 0, size);
     b->parent = -1;

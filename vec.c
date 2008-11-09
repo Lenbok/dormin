@@ -12,13 +12,6 @@ static void vcopy (float *res, float *v)
     *res++ = *v++;
 }
 
-static void vaddto (float *v1, float *v2)
-{
-    v1[0] += v2[0];
-    v1[1] += v2[1];
-    v1[2] += v2[2];
-}
-
 static void vadd (float *res, float *v1, float *v2)
 {
     res[0] = v1[0] + v2[0];
@@ -115,10 +108,80 @@ static void q2matrix (float *mat, float *q, float *v)
     mat[9]  =     2 * ( yz + xw );
     mat[10] = 1 - 2 * ( xx + yy );
 
+#ifdef USE_ALTIVEC
+    mat[12] = v[0];
+    mat[13] = v[1];
+    mat[14] = v[2];
+#else
     mat[3] = v[0];
     mat[7] = v[1];
     mat[11] = v[2];
+#endif
 }
+
+#ifdef USE_ALTIVEC
+#include <altivec.h>
+#include <malloc.h>
+
+#define simd_alloc memalign
+#define A16 __attribute__ ((aligned (16)))
+
+static void mscale (float *res, float *m, float s)
+{
+    vector float vs = {s,s,s,s};
+    vector float r0 = vec_ld (0, m) * vs;
+    vector float r1 = vec_ld (16, m) * vs;
+    vector float r2 = vec_ld (32, m) * vs;
+    vector float r3 = vec_ld (48, m) * vs;
+    vec_st (r0, 0, res);
+    vec_st (r1, 16, res);
+    vec_st (r2, 32, res);
+    vec_st (r3, 48, res);
+}
+
+static void mapply_to_point (float *res, float *m, float *v)
+{
+    vector float vv = vec_ld (0, v);
+    vector float r0 = vec_ld (0, m);
+    vector float r1 = vec_ld (16, m);
+    vector float r2 = vec_ld (32, m);
+    vector float r4 = vec_ld (48, m);
+    vector float x = vec_splat (vv, 0);
+    vector float y = vec_splat (vv, 1);
+    vector float z = vec_splat (vv, 2);
+    vector float vr1 = vec_madd (r0, x, r4);
+    vector float vr2 = vec_madd (r1, y, vr1);
+    vector float vr3 = vec_madd (r2, z, vr2);
+    vec_st (vr3, 0, res);
+}
+
+static void mapply_to_vector (float *res, float *m, float *v)
+{
+    vector float vv = vec_ld (0, v);
+    vector float r0 = vec_ld (0, m);
+    vector float r1 = vec_ld (16, m);
+    vector float r2 = vec_ld (32, m);
+    vector float vz = (vector float) vec_splat_u32 (0);
+    vector float x = vec_splat (vv, 0);
+    vector float y = vec_splat (vv, 1);
+    vector float z = vec_splat (vv, 2);
+    vector float vr1 = vec_madd (r0, x, vz);
+    vector float vr2 = vec_madd (r1, y, vr1);
+    vector float vr3 = vec_madd (r2, z, vr2);
+    vec_st (vr3, 0, res);
+}
+
+static void vaddto (float *v1, float *v2)
+{
+    vector float a = vec_ld (0, v1);
+    vector float b = vec_ld (0, v2);
+    vec_st (vec_add (a, b), 0, v1);
+}
+
+#else
+
+#define simd_alloc(a, s) stat_alloc (s)
+#define A16
 
 static void mscale (float *res, float *m, float s)
 {
@@ -145,3 +208,11 @@ static void mapply_to_vector (float *res, float *m, float *v)
     res[1] = x*m[1] + y*m[5] + z*m[9];
     res[2] = x*m[2] + y*m[6] + z*m[10];
 }
+
+static void vaddto (float *v1, float *v2)
+{
+    v1[0] += v2[0];
+    v1[1] += v2[1];
+    v1[2] += v2[2];
+}
+#endif
