@@ -124,7 +124,7 @@ let func bones anim =
         ;"b", "backward one frame", sprintf "%d, %f" sposeno t
         ;"", "", "total frames " ^ string_of_int posecount
         ;"r", "go to bind pose", ""
-        ;"1,2", "go to first/last pose", ""
+        ;"1,2", "go to first/last frame", ""
         ]
       in
       Rend.Func (subfunc drawindex quats sposeno dposeno t dir, hf)
