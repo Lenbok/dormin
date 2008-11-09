@@ -176,7 +176,7 @@ static void translate (State *s, float *vdst, float *ndst)
         float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], v2[3], w, m[12];
 
         for (j = 0; j < skin->num_bones; ++j) {
-            w = skin->weights[j] + 0.000011;
+            w = skin->weights[j];
             b = &s->bones[skin->boneindices[j]];
 
             if (w < 0.0) z = 1;
