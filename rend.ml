@@ -109,9 +109,9 @@ let help () =
   let rec loop row = function
     | [] -> ()
     | (s, s2) :: rest ->
-        let y = view.h - row * 18 in
-        draw_string 0.0 (float y) s;
-        draw_string 100.0 (float y) s2;
+        let y = view.h - row * 18 - 2 in
+        draw_string 5.0 (float y) s;
+        draw_string 105.0 (float y) s2;
         loop (row+1) rest
   in
   loop 1
