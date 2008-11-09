@@ -35,26 +35,7 @@ let r1 xff sbufxff =
   bones
 ;;
 
-let vertices bones =
-  let parentinfo = Array.make (Array.length bones + 1) (Qtr.id, Vec.origin) in
-  let mapf i (_pos, (_name, _offsets, floats, neighbors, _float)) =
-    let curq = qof floats in
-    let curv = vof floats in
-
-    let parent = neighbors.(2) in
-    let parentq, parentv = parentinfo.(parent + 1) in
-
-    let v = Qtr.apply parentq curv in
-    let v = Vec.add v parentv in
-
-    let q = Qtr.compose curq parentq in
-    parentinfo.(i + 1) <- (q, v);
-    Vec.elts parentv, Vec.elts v;
-  in
-  Array.mapi mapf bones;
-;;
-
-let vertices1 bones quats =
+let vertices bones quats =
   let parentinfo = Array.make (Array.length bones + 1) (Qtr.id, Vec.origin) in
   let mapf i (pos, (name, offsets, floats, neighbors, float)) =
     let curq = quats.(i) in
@@ -85,29 +66,9 @@ let sphere =
     GlMat.pop ();
 ;;
 
-let draw data =
-  let rta = vertices data in
-  fun () ->
-    GlDraw.polygon_mode `both `line;
-    Gl.disable  `depth_test;
-    Array.iteri
-      (fun i (pos, (n, d, m, h, f)) ->
-        GlDraw.line_width 0.1;
-        GlDraw.color (0., 0., 1.);
-        let v0, v1 = rta.(i) in
-        sphere v1;
-        GlDraw.line_width 2.0;
-        GlDraw.begins `lines;
-        GlDraw.vertex3 v0;
-        GlDraw.vertex3 v1;
-        GlDraw.ends ();
-      ) data;
-    Gl.enable `depth_test;
-;;
-
-let draw1 bones =
+let draw bones =
   fun ?(dsphere=false) quats ->
-    let rta = vertices1 bones quats in
+    let rta = vertices bones quats in
     fun () ->
       GlDraw.polygon_mode `both `line;
       GlDraw.color (0., 0., 1.);
@@ -125,6 +86,10 @@ let draw1 bones =
       Gl.enable `depth_test;
 ;;
 
+let skbquats bones =
+  Array.map (fun (_, (_, _, f, _, _)) -> qof f) bones
+;;
+
 let animate quats =
   Skin.set_anim quats;
   Skin.anim ();
@@ -139,10 +104,10 @@ let func bones anim =
   let skeldraw n quats =
     match n mod 3 with
     | 0 -> ()
-    | 1 -> draw1 bones quats ()
-    | _ -> draw1 ~dsphere:true bones quats ()
+    | 1 -> draw bones quats ()
+    | _ -> draw ~dsphere:true bones quats ()
   in
-  let skbquats = Array.map (fun (_, (_, _, f, _, _)) -> qof f) bones in
+  let skbquats = skbquats bones in
   let rec subfunc drawindex quats sposeno dposeno t dir =
     let subf
         ?(drawindex=drawindex)
@@ -246,7 +211,8 @@ let main name =
           func bones anim
         with exn ->
           prerr_endline (Printexc.to_string exn);
-          dummy (draw bones)
+          let quats = skbquats bones in
+          dummy (draw bones quats)
       end;
     with exn ->
       prerr_endline (Printexc.to_string exn);
