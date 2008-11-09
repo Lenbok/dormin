@@ -5,6 +5,7 @@ and func_ret = Func of (func * helpfunc)
 
 let nmo_name = ref None
 let anb_name = ref None
+let skb_name = ref None
 let mipmaps = ref false
 let slerp_step = ref 1.0
 
@@ -421,6 +422,8 @@ let _ =
     ;"-index", Arg.Set_string Xff.index_path, "<path> of index"
     ;"-base", Arg.String (setsome Xff.base_path), "<directory> base"
     ;"-sstep", Arg.Set_float slerp_step, "<float> slerp step"
+    ;("-skb", Arg.String (setsome skb_name),
+     "<name> use specified skb instead of guessing")
     ;"-mipmaps", Arg.Set mipmaps, " use mipmaps"
     ]
   in

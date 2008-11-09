@@ -210,7 +210,12 @@ let skin bones =
 let main name =
   let func =
     try
-      let name = Filename.chop_extension name ^ ".skb" in
+      let name =
+        match !Rend.skb_name with
+        | Some s -> s
+        | None ->
+            Filename.chop_extension name ^ ".skb"
+      in
       let xff, sbuf = Xff.test2 name in
       let bones = r1 xff sbuf in
       begin try
