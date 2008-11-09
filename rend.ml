@@ -5,6 +5,7 @@ and func_ret = Func of func
 let nmo_name = ref None
 let anb_name = ref None
 let mipmaps = ref false
+let slerp_step = ref 1.0
 
 type view =
     { mutable w : int
@@ -45,7 +46,7 @@ let view =
   ; dumpchan = lazy (open_out_bin "dump.rgb")
   ; dodump = false
   ; aincr = 3.0
-  ; roteye = true
+  ; roteye = false
   ; sphere = false
   ; help = false
   ; x = 0
@@ -97,14 +98,15 @@ let help () =
     ~z:(-1., 1.)
   ;
 
+  Gl.disable `depth_test;
+  Gl.disable `alpha_test;
+
   Gl.enable `blend;
   GlFunc.blend_func `src_alpha `one_minus_src_alpha;
   GlDraw.color (0., 0., 0.) ~alpha:0.3;
   GlDraw.rect (0., 0.) (float view.w, float view.h);
   Gl.disable `blend;
 
-  Gl.disable `depth_test;
-  Gl.disable `alpha_test;
   GlDraw.color (1., 1., 1.);
   let rec loop row = function
     | [] -> ()
@@ -133,7 +135,8 @@ let help () =
     ;" z,x,arrows", "rotate"
     ;" 0,9", "zoom"
     ;" 1,2", "go to first/last pose"
-    ;" <,>", "increase/decrease alpha"
+    ;" < , >", (Printf.sprintf "decrease/increase alpha (%1.2f)" view.alpha)
+    ;" [ , ]", (Printf.sprintf "decrease/increase slerp step (%2.1f)" !slerp_step)
     ;"", ""
     ;"Move mouse while holding left button pressed to rotate model", ""
     ;"Move mouse while holding right button pressed to zoom", ""
@@ -259,7 +262,7 @@ let idle () =
   else
     view.last_time <- view.last_time +. 0.04
   ;
-  view.func <- List.map (fun f -> let Func fr = f (Char 'f') in fr)  view.func;
+  view.func <- List.map (fun f -> let Func fr = f (Char 'n') in fr)  view.func;
   Glut.postRedisplay ();
 ;;
 
@@ -286,8 +289,10 @@ let keyboard ~key ~x ~y =
         Glut.idleFunc (Some idle)
       )
   | 'f' | 'b' when not view.animated -> allfunc (Char (Char.chr key))
-  | '<' -> view.alpha <- min (view.alpha +. 0.01) 1.0;
-  | '>' -> view.alpha <- max (view.alpha -. 0.01) 0.0;
+  | '<' -> view.alpha <- max (view.alpha -. 0.01) 0.0;
+  | '>' -> view.alpha <- min (view.alpha +. 0.01) 1.0;
+  | '[' -> slerp_step := max (!slerp_step -. 0.1) 0.0;
+  | ']' -> slerp_step := min (!slerp_step +. 0.1) 1.0;
   | c -> allfunc (Char c)
   end;
   setup view.w view.h;
@@ -393,6 +398,7 @@ let _ =
     ;"-index", Arg.Set_string Xff.index_path, " <path> of index"
     ;"-base", Arg.String (setsome Xff.base_path), " <directory> base"
     ;"-mipmaps", Arg.Set mipmaps, "use mipmaps"
+    ;"-sstep", Arg.Set_float slerp_step, "<float> slerp step"
     ]
   in
   Arg.parse (Arg.align spec)

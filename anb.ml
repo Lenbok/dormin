@@ -102,9 +102,17 @@ let quat13 posecount sectbuf sbuf =
   Array.init posecount toquat
 ;;
 
-let skin bones poseno =
-  let quats = Array.map (fun a -> Array.get a poseno) bones in
-  Skin.set_anim quats;
+let exact bones poseno =
+  Array.map (fun a -> Array.get a poseno) bones
+;;
+
+let interpolated bones sposeno dposeno t =
+  Array.init (Array.length bones)
+    (fun i ->
+      let sq = bones.(i).(sposeno)
+      and dq = bones.(i).(dposeno) in
+      Qtr.slerp sq dq t
+    )
 ;;
 
 let r xff sbufxff =
