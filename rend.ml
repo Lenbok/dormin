@@ -132,6 +132,7 @@ let help () =
     ;" d", "dump images to dump.rgb"
     ;" z,x,arrows", "rotate"
     ;" 0,9", "zoom"
+    ;" 1,2", "go to first/last pose"
     ;" <,>", "increase/decrease alpha"
     ;"", ""
     ;"Move mouse while holding left button pressed to rotate model", ""

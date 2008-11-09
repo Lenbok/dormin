@@ -73,20 +73,20 @@ let vertices1 bones rotations poseno =
   Array.mapi mapf bones;
 ;;
 
-let draw data =
-  let rta = vertices data in
+let sphere =
   let quad = lazy (GluQuadric.create ()) in
-
-  let sphere origin =
+  fun origin ->
     GlMat.mode `modelview;
     GlMat.push ();
     GlMat.translate3 (origin);
     let radius = Rend.view.Rend.radial_scale*.0.009 in
     let quad = Lazy.force quad in
     GluQuadric.sphere ~radius ~stacks:5 ~slices:5 ~quad ();
-    GlMat.pop ()
-  in
+    GlMat.pop ();
+;;
 
+let draw data =
+  let rta = vertices data in
   fun () ->
     GlDraw.polygon_mode `both `line;
     Gl.disable  `depth_test;
@@ -106,7 +106,7 @@ let draw data =
 ;;
 
 let draw1 bones =
-  fun rotations poseno ->
+  fun ?(dsphere=false) rotations poseno ->
     let rta = vertices1 bones rotations poseno in
     fun () ->
       GlDraw.polygon_mode `both `line;
@@ -115,7 +115,7 @@ let draw1 bones =
       for i = 0 to Array.length bones - 1 do
         (* GlDraw.line_width 0.1; *)
         let v0, v1 = rta.(i) in
-        (* sphere v1; *)
+        if dsphere then sphere v1;
         GlDraw.line_width 2.0;
         GlDraw.begins `lines;
         GlDraw.vertex3 v0;
@@ -130,19 +130,25 @@ let func bones anim =
   let draw0 = draw bones in
   let draw1 = draw1 bones in
   let rec subfunc dodraw poseno draw = function
-    | Rend.Char ('f'|'b' as c) ->
+    | Rend.Char ('f'|'b'|'1'|'2' as c) ->
         let poseno =
-          if c = 'b' then
-            let poseno = if poseno = 0 then posecount else poseno in
-            (poseno - 1) mod posecount
-          else
-            (poseno + 1) mod posecount
+          match c with
+          | '1' -> 0
+          | '2' -> posecount - 1
+          | 'b' ->
+              let poseno = if poseno = 0 then posecount else poseno in
+              (poseno - 1) mod posecount
+          | _ ->
+              (poseno + 1) mod posecount
         in
         let draw = draw1 rotations poseno in
         Anb.skin rotations poseno;
         Skin.anim ();
         Rend.Func (subfunc dodraw poseno draw)
     | Rend.Char 'r' ->
+        let quats = Array.map (fun (_, (_, _, f, _, _)) -> qof f) bones in
+        Skin.set_anim quats;
+        Skin.anim ();
         Rend.Func (subfunc dodraw 0 draw0)
     | Rend.Draw ->
         if dodraw then draw ();
