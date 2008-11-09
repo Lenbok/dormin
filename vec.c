@@ -139,6 +139,7 @@ static void mscale (float *res, float *m, float s)
     vec_st (r3, 48, res);
 }
 
+/* http://www.freevec.org/category/simd/algorithms/algebra/matrix_operations */
 static void mapply_to_point (float *res, float *m, float *v)
 {
     vector float vv = vec_ld (0, v);
