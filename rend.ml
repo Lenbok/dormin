@@ -140,7 +140,6 @@ let help () =
     ;"q, ESC", "quit", ""
     ;"z,x,arrows", "rotate", angles
     ;"0,9", "zoom", Printf.sprintf "%f" view.zoom
-    ;"1,2", "go to first/last pose", ""
     ;"< , >", "decrease/increase alpha", Printf.sprintf "%1.2f" view.alpha
     ;"[ , ]", "decrease/increase slerp step", Printf.sprintf "%2.1f" !slerp_step
     ;"3,4", "decrease/increase ambient", Printf.sprintf "%2.1f" view.ambient
