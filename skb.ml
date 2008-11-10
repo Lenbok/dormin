@@ -126,7 +126,7 @@ let obj bones anim =
         and dposeno = clip (dposeno + dir) in
         {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = 0.0 >}
       else
-        {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = 0.0 >}
+        {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = t >}
 
     method help =
       [("s", "toggle skeleton (S type)",
