@@ -120,8 +120,8 @@ let func bones anim =
         ?(dir=dir) () =
       let drawindex = drawindex mod 3 in
       let hf () =
-        ["s", "toggle skeleton", (if drawindex = 0 then "off" else "on")
-        ;"S", "skeleton type", string_of_int drawindex
+        [("s", "toggle skeleton (S type)",
+         if drawindex = 0 then "off" else string_of_int drawindex)
         ;"B", sprintf "toggle animation direction", string_of_int dir
         ;"f", "forward one frame", sprintf "%d, %f" sposeno t
         ;"b", "backward one frame", sprintf "%d, %f" sposeno t

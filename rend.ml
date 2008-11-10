@@ -34,6 +34,8 @@ type view =
     ; mutable mtype : [`none|`zoom|`rotate|`move]
     ; mutable transl : (float * float * float)
     ; mutable alpha : float
+    ; mutable ambient : float
+    ; mutable diffuse : float
     }
 
 let view =
@@ -50,14 +52,16 @@ let view =
   ; dumpchan = lazy (open_out_bin "dump.rgb")
   ; dodump = false
   ; aincr = 3.0
-  ; roteye = false
+  ; roteye = true
   ; sphere = false
   ; help = false
   ; x = 0
   ; y = 0
   ; mtype = `none
   ; transl = (0.0, 0.0, 0.0)
-  ; alpha = 0.0
+  ; alpha = 0.04
+  ; ambient = 1.3
+  ; diffuse = 0.5
   }
 ;;
 
@@ -128,8 +132,7 @@ let help () =
     let angles =
       Printf.sprintf "% f, % f, % f" view.rotx view.roty view.rotz
     in
-    [("Keys:", "", "")
-    ;"h", "toggle help", ""
+    [("Keys (h toggles this screen):", "", "")
     ;"e", "toggle eye/model rotation", if view.roteye then "eye" else "model"
     ;"a", "toggle animation", onoff view.animated
     ;"o", "toggle bounding sphere", onoff view.sphere
@@ -140,6 +143,8 @@ let help () =
     ;"1,2", "go to first/last pose", ""
     ;"< , >", "decrease/increase alpha", Printf.sprintf "%1.2f" view.alpha
     ;"[ , ]", "decrease/increase slerp step", Printf.sprintf "%2.1f" !slerp_step
+    ;"3,4", "decrease/increase ambient", Printf.sprintf "%2.1f" view.ambient
+    ;"5,6", "decrease/increase diffuse", Printf.sprintf "%2.1f" view.diffuse
     ;"","",""
     ]
   in
@@ -316,6 +321,10 @@ let keyboard ~key ~x ~y =
   | '>' -> view.alpha <- min (view.alpha +. 0.01) 1.0;
   | '[' -> slerp_step := max (!slerp_step -. 0.1) 0.0;
   | ']' -> slerp_step := min (!slerp_step +. 0.1) 1.0;
+  | '3' -> view.ambient <- view.ambient -. 0.1;
+  | '4' -> view.ambient <- view.ambient +. 0.1;
+  | '5' -> view.diffuse <- view.diffuse -. 0.1;
+  | '6' -> view.diffuse <- view.diffuse +. 0.1;
   | c -> allfunc (Char c)
   end;
   setup view.w view.h;

@@ -397,8 +397,10 @@ let draw geom =
         GlDraw.color (1., 1., 1.);
       );
       if colormaterial then (
-        GlLight.light 0 (`ambient (let c = 1.0 in (c,c,c,1.)));
-        GlLight.light 0 (`diffuse (let c = 0.0 in (c,c,c,1.)));
+        let a = Rend.view.Rend.ambient
+        and d = Rend.view.Rend.diffuse in
+        GlLight.light 0 (`ambient (a,a,a,1.));
+        GlLight.light 0 (`diffuse (d,d,d,1.));
         Gl.enable `color_material;
       )
       else (
