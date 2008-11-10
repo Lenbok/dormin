@@ -184,7 +184,7 @@ let func bones anim =
       | _ ->
           subf ()
   in
-  subfunc 0 skbquats 0 1 0.0 1
+  subfunc 0 skbquats 0 (clip 1) 0.0 1
 ;;
 
 let dummy draw =
