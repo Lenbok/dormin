@@ -123,7 +123,7 @@ let r xff sbufxff =
   let sectpos = xff.Xff.sections.(1).Xff.off in
   let sectbuf = Xff.sbufplus sbufxff sectpos in
   let anbbuf = Xff.sbufplus sectbuf xff.Xff.entry in
-  if not (Xff.cmp anbbuf (`dwords [12l]))
+  if not (Xff.check32 anbbuf 0 12l)
   then
     Xff.sbuferr anbbuf 0 "bad anb signature"
   ;
