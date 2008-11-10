@@ -4,7 +4,7 @@ and helpfunc = (unit -> (string * string * string) list)
 and func_ret = Func of (func * helpfunc)
 
 let nmo_name = ref None
-let anb_name = ref None
+let anb_names = ref []
 let skb_name = ref None
 let mipmaps = ref false
 let slerp_step = ref 1.0
@@ -438,11 +438,9 @@ let _ =
   in
   Arg.parse (Arg.align spec)
     (fun s ->
-      if !nmo_name != None then (
-        if !anb_name != None
-        then raise (Arg.Bad "invalid usage")
-        else anb_name := Some s;
-      ) else nmo_name := Some s;
+      if !nmo_name != None
+      then anb_names := s :: !anb_names
+      else nmo_name := Some s;
     )
-    "Usage: dormin [options] model.nmo [animation.anb]"
+    "Usage: dormin [options] model.nmo [animation.anb ...]"
 ;;

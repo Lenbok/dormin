@@ -219,20 +219,22 @@ let main name =
       in
       let xff, sbuf = Xff.test2 name in
       let bones = r1 xff sbuf in
-      begin try
-          let anim_name =
-            match !Rend.anb_name with
-            | None -> raise (Failure "no animation set")
-            | Some name ->name
-          in
-          let xff, sbuf = Xff.test2 (Filename.basename anim_name) in
-          let anim = Anb.r xff sbuf in
-          skin bones;
-          func bones anim
-        with exn ->
-          prerr_endline (Printexc.to_string exn);
+      begin match !Rend.anb_names with
+      | [] ->
           let quats = skbquats bones in
           dummy (draw bones quats)
+      | hd :: tl ->
+          let ranb name =
+            let xff, sbuf = Xff.test2 (Filename.basename name) in
+            let anim = Anb.r xff sbuf in
+            anim
+          in
+          let anim =
+            List.fold_left
+              (fun accu name -> Anb.append accu (ranb name)) (ranb hd) tl
+          in
+          skin bones;
+          func bones anim;
       end;
     with exn ->
       prerr_endline (Printexc.to_string exn);

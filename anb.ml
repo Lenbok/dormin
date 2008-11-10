@@ -147,3 +147,8 @@ let r xff sbufxff =
   in
   posecount, Array.init bonecount rbone
 ;;
+
+let append (p1, b1) (p2, b2) =
+  let b = Array.init (Array.length b1) (fun i -> Array.append b1.(i) b2.(i)) in
+  p1 + p2, b;
+;;
