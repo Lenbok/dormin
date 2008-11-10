@@ -448,37 +448,38 @@ let draw geom =
     );
 ;;
 
-let func geom =
+let obj geom =
   let draw = draw geom in
   let onoff c s b = c, "toggle " ^ s, if b then "on" else "off" in
-  let rec subfunc dodraw ~textures ~lighting ~solid ~colormaterial =
-    let f
-        ?(textures=textures)
-        ?(lighting=lighting)
-        ?(solid=solid)
-        ?(colormaterial=colormaterial) dodraw =
-      let hf () =
-        [onoff "t""textures" textures
-        ;onoff "l" "lighting" lighting
-        ;onoff "w" "wireframe" (not solid)
-        ;onoff "c" "color material" colormaterial
-        ;onoff "m" "model" dodraw
-        ]
-      in
-      Rend.Func (subfunc dodraw ~textures ~lighting ~solid ~colormaterial, hf)
-    in
-    function
-      | Rend.Char 't' -> f ~textures:(not textures) dodraw
-      | Rend.Char 'l' -> f ~lighting:(not lighting) dodraw
-      | Rend.Char 'w' -> f ~solid:(not solid) dodraw
-      | Rend.Char 'c' -> f ~colormaterial:(not colormaterial) dodraw
-      | Rend.Char 'm' -> f (not dodraw)
-      | Rend.Draw when dodraw ->
-          draw ~textures ~lighting ~solid ~colormaterial ();
-          f dodraw
-      | Rend.Char _ | Rend.Draw -> f dodraw
-  in
-  subfunc true ~textures:false ~lighting:false ~solid:true ~colormaterial:false
+  (object (self)
+    val dodraw = true
+    val textures = false
+    val lighting = false
+    val solid = true
+    val colormaterial = false
+
+    method help =
+      [onoff "t""textures" textures
+      ;onoff "l" "lighting" lighting
+      ;onoff "w" "wireframe" (not solid)
+      ;onoff "c" "color material" colormaterial
+      ;onoff "m" "model" dodraw
+      ]
+
+    method draw =
+      if dodraw
+      then
+        draw ~textures ~lighting ~solid ~colormaterial ()
+
+    method char c =
+      match c with
+      | 't' -> {< textures = not textures >}
+      | 'l' -> {< lighting = not lighting >}
+      | 'w' -> {< solid = not solid >}
+      | 'c' -> {< colormaterial = not colormaterial >}
+      | 'm' -> {< dodraw = not dodraw >}
+      | _ -> self
+  end)
 ;;
 
 let _ =
@@ -509,7 +510,7 @@ let _ =
     f (x, x, y, y, z, z) 3
   in
   Skb.main name;
-  Rend.add_func (func geom);
+  Rend.add_obj (obj geom);
   Rend.init minmax;
   Rend.main ()
 ;;

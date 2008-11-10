@@ -97,7 +97,7 @@ let animate quats =
   Skin.anim ();
 ;;
 
-let func bones anim =
+let obj bones anim =
   let posecount, rotations = anim in
   let clip poseno =
     let poseno' = poseno mod posecount in
@@ -110,57 +110,56 @@ let func bones anim =
     | _ -> draw ~dsphere:true bones quats ()
   in
   let skbquats = skbquats bones in
-  let rec subfunc drawindex quats sposeno dposeno t dir =
-    let subf
-        ?(drawindex=drawindex)
-        ?(sposeno=sposeno)
-        ?(dposeno=dposeno)
-        ?(t=t)
-        ?(quats=quats)
-        ?(dir=dir) () =
-      let drawindex = drawindex mod 3 in
-      let hf () =
-        [("s", "toggle skeleton (S type)",
-         if drawindex = 0 then "off" else string_of_int drawindex)
-        ;"B", sprintf "toggle animation direction", string_of_int dir
-        ;"f", "forward one frame", sprintf "%d, %f" sposeno t
-        ;"b", "backward one frame", sprintf "%d, %f" sposeno t
-        ;"", "", "total frames " ^ string_of_int posecount
-        ;"r", "go to bind pose", ""
-        ;"1,2", "go to first/last frame", ""
-        ]
-      in
-      Rend.Func (subfunc drawindex quats sposeno dposeno t dir, hf)
-    in
-    let advance quats dir =
+  (object (self)
+    val drawindex = 0
+    val sposeno = 0
+    val dposeno = clip 1
+    val quats = skbquats
+    val t = 0.0
+    val dir = 1
+
+    method private advance quats dir =
       let t = t +. !Rend.slerp_step in
       if t >= 1.0
       then
         let sposeno = dposeno
         and dposeno = clip (dposeno + dir) in
-        subf ~quats ~sposeno ~dposeno ~t:0.0 ()
+        {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = 0.0 >}
       else
-        subf ~quats ~sposeno ~dposeno ~t ()
-    in
-    function
-      | Rend.Char ('n' | 'f' | 'b' as c) ->
+        {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = 0.0 >}
+
+    method help =
+      [("s", "toggle skeleton (S type)",
+       if drawindex = 0 then "off" else string_of_int drawindex)
+      ;"B", sprintf "toggle animation direction", string_of_int dir
+      ;"f", "forward one frame", sprintf "%d, %f" sposeno t
+      ;"b", "backward one frame", sprintf "%d, %f" sposeno t
+      ;"", "", "total frames " ^ string_of_int posecount
+      ;"r", "go to bind pose", ""
+      ;"1,2", "go to first/last frame", ""
+      ]
+
+    method draw = skeldraw drawindex quats
+
+    method char c =
+      match c with
+      | 'n' | 'f' | 'b' ->
           let quats = Anb.interpolated rotations sposeno dposeno t in
           animate quats;
-          advance quats
+          self#advance quats
             (match c with
             | 'n' -> dir
             | 'f' -> 1
             | _ -> -1)
 
-      | Rend.Char 'B' ->
-          subf ~dir:~-dir ()
+      | 'B' -> {< dir = -dir >}
 
-      | Rend.Char 'r' ->
+      | 'r' ->
           Skin.set_anim skbquats;
           Skin.anim ();
-          subf ~drawindex:1 ~quats:skbquats ()
+          {< drawindex = 1; quats = skbquats >}
 
-      | Rend.Char ('1' | '2' as c) ->
+      | '1' | '2' ->
           let sposeno, dposeno =
             if c = '1'
             then 0, clip 1
@@ -169,35 +168,23 @@ let func bones anim =
           let quats = Anb.exact rotations sposeno in
           animate quats;
           let t = if dir > 0 then 1.0 else 0.0 in
-          subf ~quats ~sposeno ~dposeno ~t ~dir ()
+          {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = t >}
 
-      | Rend.Char 's' ->
-          subf ~drawindex:(drawindex lxor 1) ()
-
-      | Rend.Char 'S' ->
-          subf ~drawindex:(drawindex + 1) ()
-
-      | Rend.Draw ->
-          skeldraw drawindex quats;
-          subf ()
-
-      | _ ->
-          subf ()
-  in
-  subfunc 0 skbquats 0 (clip 1) 0.0 1
+      | 's' -> {< drawindex = drawindex lxor 1 >}
+      | 'S' -> {< drawindex = (drawindex + 1) mod 3 >}
+      | _ -> self
+  end)
 ;;
 
 let dummy draw =
-  let rec subfunc dodraw =
-    let hf () =
-      ["s", "toggle skeleton", if dodraw then "on" else "off"]
-    in
-    function
-      | Rend.Draw -> if dodraw then draw (); Rend.Func (subfunc dodraw, hf)
-      | Rend.Char 's' -> Rend.Func (subfunc (not dodraw), hf)
-      | _ -> Rend.Func (subfunc dodraw, hf)
-  in
-  subfunc false
+  (object (self)
+    val dodraw = false
+
+    method help = ["s", "toggle skeleton", if dodraw then "on" else "off"]
+    method draw = if dodraw then draw ()
+    method char c =
+      if c = 's' then {< dodraw = not dodraw >} else self
+  end)
 ;;
 
 let skin bones =
@@ -209,7 +196,7 @@ let skin bones =
 ;;
 
 let main name =
-  let func =
+  let obj =
     try
       let name =
         match !Rend.skb_name with
@@ -234,11 +221,15 @@ let main name =
               (fun accu name -> Anb.append accu (ranb name)) (ranb hd) tl
           in
           skin bones;
-          func bones anim;
+          obj bones anim;
       end;
     with exn ->
       prerr_endline (Printexc.to_string exn);
-      let rec f _ = Rend.Func (f, (fun () -> [])) in f
+      (object (self)
+        method help = []
+        method draw = ()
+        method char _ = self
+      end)
   in
-  Rend.add_func func
+  Rend.add_obj obj
 ;;

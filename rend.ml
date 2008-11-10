@@ -1,7 +1,8 @@
-type cmd = | Char of char | Draw;;
-type func = cmd -> func_ret
-and helpfunc = (unit -> (string * string * string) list)
-and func_ret = Func of (func * helpfunc)
+class type draw = object
+  method draw: unit
+  method char: char -> draw
+  method help: (string * string * string) list
+end;;
 
 let nmo_name = ref None
 let anb_names = ref []
@@ -18,8 +19,7 @@ type view =
     ; mutable zoom : float
     ; mutable center : (float * float * float)
     ; mutable radial_scale : float
-    ; mutable func : func list
-    ; mutable helpfunc : helpfunc list
+    ; mutable objs : draw list
     ; mutable persp : bool
     ; mutable last_time : float
     ; mutable animated : bool
@@ -44,8 +44,7 @@ let view =
   ; center = (0.0, 0.0, 0.0)
   ; radial_scale = 0.0
   ; zoom = 1.0
-  ; func = []
-  ; helpfunc = []
+  ; objs = []
   ; persp = true
   ; last_time = 0.0
   ; animated = false
@@ -148,7 +147,7 @@ let help () =
     ]
   in
   let help =
-    List.fold_left (fun accu hf -> accu @ hf ()) help view.helpfunc
+    List.fold_left (fun accu draw -> accu @ draw#help) help view.objs
   in
   loop 1
     (help @
@@ -190,7 +189,7 @@ let display () =
     GlMat.pop ();
   );
 
-  List.iter (fun f -> ignore (f Draw)) view.func;
+  List.iter (fun draw -> draw#draw) view.objs;
   if view.help then help ();
   Glut.swapBuffers ();
 
@@ -269,15 +268,9 @@ let reshape ~w ~h =
   setup w h;
 ;;
 
-let allfunc cmd =
-  let f, h =
-    List.split (
-      List.map (fun f -> let Func (fr, hf) = f cmd in fr, hf) view.func
-    )
-  in
-  view.func <- f;
-  view.helpfunc <-h;
-;;
+let mchar c draw = draw#char c;;
+let mdraw draw = draw#draw; draw;;
+let allfunc f = view.objs <- List.map f view.objs;;
 
 let idle () =
   let deadline = view.last_time +. 0.04 in
@@ -289,7 +282,7 @@ let idle () =
   else
     view.last_time <- view.last_time +. 0.04
   ;
-  allfunc (Char 'n');
+  allfunc (mchar 'n');
   Glut.postRedisplay ();
 ;;
 
@@ -315,7 +308,7 @@ let keyboard ~key ~x ~y =
         last_time <- Unix.gettimeofday ();
         Glut.idleFunc (Some idle)
       )
-  | 'f' | 'b' when not view.animated -> allfunc (Char (Char.chr key))
+  | ('f' | 'b') as c when not view.animated -> allfunc (mchar c);
   | '<' -> view.alpha <- max (view.alpha -. 0.01) 0.0;
   | '>' -> view.alpha <- min (view.alpha +. 0.01) 1.0;
   | '[' -> slerp_step := max (!slerp_step -. 0.1) 0.0;
@@ -324,7 +317,7 @@ let keyboard ~key ~x ~y =
   | '4' -> view.ambient <- view.ambient +. 0.1;
   | '5' -> view.diffuse <- view.diffuse -. 0.1;
   | '6' -> view.diffuse <- view.diffuse +. 0.1;
-  | c -> allfunc (Char c)
+  | c -> allfunc (mchar c)
   end;
   setup view.w view.h;
   Glut.postRedisplay ();
@@ -408,13 +401,13 @@ let main () =
   let () = Glut.specialFunc special in
   let () = Glut.mouseFunc mouse in
   let () = Glut.motionFunc motion in
-  allfunc (Char '\000');
+  allfunc (mchar '\000');
   let () = Glut.mainLoop () in
   ()
 ;;
 
-let add_func func =
-  view.func <- func :: view.func;
+let add_obj draw =
+  view.objs <- draw :: view.objs;
 ;;
 
 let init minmax =
