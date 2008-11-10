@@ -21,6 +21,10 @@ let r1 xff sbufxff =
   let sectpos = xff.Xff.sections.(1).Xff.off in
   let sectbuf = Xff.sbufplus sbufxff sectpos in
   let skbbuf = Xff.sbufplus sectbuf xff.Xff.entry in
+  if not (Xff.cmp skbbuf (`dwords [1l]))
+  then
+    Xff.sbuferr skbbuf 0 "bad skb signature"
+  ;
 
   let count1 = Xff.rint skbbuf 4 in
   let _pos1 = Xff.rint skbbuf 8 in
