@@ -236,7 +236,7 @@ let main name =
       end;
     with exn ->
       prerr_endline (Printexc.to_string exn);
-      dummy (fun () -> ())
+      let rec f _ = Rend.Func (f, (fun () -> [])) in f
   in
   Rend.add_func func
 ;;
