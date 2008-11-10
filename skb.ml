@@ -170,7 +170,7 @@ let obj bones anim =
           let t = if dir > 0 then 1.0 else 0.0 in
           {< quats = quats; sposeno = sposeno; dposeno = dposeno; t = t >}
 
-      | 's' -> {< drawindex = drawindex lxor 1 >}
+      | 's' -> {< drawindex = if drawindex = 0 then 1 else 0 >}
       | 'S' -> {< drawindex = (drawindex + 1) mod 3 >}
       | _ -> self
   end)
