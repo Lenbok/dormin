@@ -64,6 +64,8 @@ let view =
   }
 ;;
 
+let mapchar c = view.objs <- List.map (fun draw -> draw#char c) view.objs;;
+let appdraw () = List.iter (fun draw -> draw#draw) view.objs;;
 let deg2rad deg = deg /. 180.0 *. acos ~-.1.;;
 
 let center_and_radial_scale (minx, maxx, miny, maxy, minz, maxz) =
@@ -189,7 +191,7 @@ let display () =
     GlMat.pop ();
   );
 
-  List.iter (fun draw -> draw#draw) view.objs;
+  appdraw ();
   if view.help then help ();
   Glut.swapBuffers ();
 
@@ -268,10 +270,6 @@ let reshape ~w ~h =
   setup w h;
 ;;
 
-let mchar c draw = draw#char c;;
-let mdraw draw = draw#draw; draw;;
-let allfunc f = view.objs <- List.map f view.objs;;
-
 let idle () =
   let deadline = view.last_time +. 0.04 in
   let currtime = Unix.gettimeofday () in
@@ -282,7 +280,7 @@ let idle () =
   else
     view.last_time <- view.last_time +. 0.04
   ;
-  allfunc (mchar 'n');
+  mapchar 'n';
   Glut.postRedisplay ();
 ;;
 
@@ -308,7 +306,7 @@ let keyboard ~key ~x ~y =
         last_time <- Unix.gettimeofday ();
         Glut.idleFunc (Some idle)
       )
-  | ('f' | 'b') as c when not view.animated -> allfunc (mchar c);
+  | ('f' | 'b') as c when not view.animated -> mapchar c;
   | '<' -> view.alpha <- max (view.alpha -. 0.01) 0.0;
   | '>' -> view.alpha <- min (view.alpha +. 0.01) 1.0;
   | '[' -> slerp_step := max (!slerp_step -. 0.1) 0.0;
@@ -317,7 +315,7 @@ let keyboard ~key ~x ~y =
   | '4' -> view.ambient <- view.ambient +. 0.1;
   | '5' -> view.diffuse <- view.diffuse -. 0.1;
   | '6' -> view.diffuse <- view.diffuse +. 0.1;
-  | c -> allfunc (mchar c)
+  | c -> mapchar c;
   end;
   setup view.w view.h;
   Glut.postRedisplay ();
@@ -401,7 +399,7 @@ let main () =
   let () = Glut.specialFunc special in
   let () = Glut.mouseFunc mouse in
   let () = Glut.motionFunc motion in
-  allfunc (mchar '\000');
+  mapchar '\000';                       (* bootstrap *)
   let () = Glut.mainLoop () in
   ()
 ;;
