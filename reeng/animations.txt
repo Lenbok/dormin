@@ -68,7 +68,7 @@ When flag is 12:
  Data contains: 6 floating point numbers and an array of M 48 bit
  values.
 
- Floating pints form 3 pairs, constraint:
+ Floating point values form 3 pairs, constraint:
   first pair member (-1, 1)
   second            [ 0, 1)
 
