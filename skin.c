@@ -40,11 +40,13 @@ typedef struct {
     int num_vertices;
     GLuint bufid[COUNT];
     float *ptrs[COUNT];
+    void *bufs[COUNT];
     struct skin *skin;
     struct bone *bones;
 } State;
 
 static State glob_state;
+static int use_vbo;
 
 static void skin_init (State *s, value vertexa_v, value normala_v,
                        value uva_v, value skin_v, value colors_v)
@@ -55,35 +57,60 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
     struct skin *skin;
     s->num_vertices = Wosize_val (vertexa_v) / (Double_wosize * 3);
 
-    glGenBuffers (COUNT, s->bufid);
+    if (use_vbo)
+        glGenBuffers (COUNT, s->bufid);
 
     size = s->num_vertices * sizeof (GLfloat) * 3;
     p = s->ptrs[V_IDX] = stat_alloc (size);
     for (i = 0; i < s->num_vertices * 3; ++i) {
         p[i] = Double_field (vertexa_v, i);
     }
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-    glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
+    if (use_vbo) {
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
+        glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
+    }
+    else {
+        s->bufs[V_IDX] = simd_alloc (16, size);
+        memcpy (s->bufs[V_IDX], p, size);
+    }
 
     p = s->ptrs[N_IDX] = stat_alloc (size);
     for (i = 0; i < s->num_vertices * 3; ++i) {
         p[i] = Double_field (normala_v, i);
     }
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
+    if (use_vbo) {
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
+        glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
+    }
+    else {
+        s->bufs[N_IDX] = simd_alloc (16, size);
+        memcpy (s->bufs[N_IDX], p, size);
+    }
 
     size = s->num_vertices * sizeof (GLfloat) * 2;
     p = s->ptrs[UV_IDX] = stat_alloc (size);
     for (i = 0; i < s->num_vertices * 2; ++i) {
         p[i] = Double_field (uva_v, i);
     }
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
-    glBufferData (GL_ARRAY_BUFFER, size, p, GL_STATIC_DRAW);
+    if (use_vbo) {
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
+        glBufferData (GL_ARRAY_BUFFER, size, p, GL_STATIC_DRAW);
+    }
+    else {
+        s->bufs[UV_IDX] = simd_alloc (16, size);
+        memcpy (s->bufs[UV_IDX], p, size);
+    }
     stat_free (p);
 
     size = s->num_vertices * 4;
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
-    glBufferData (GL_ARRAY_BUFFER, size, String_val (colors_v), GL_STATIC_DRAW);
+    if (use_vbo) {
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
+        glBufferData (GL_ARRAY_BUFFER, size, String_val (colors_v), GL_STATIC_DRAW);
+    }
+    else {
+        s->bufs[C_IDX] = simd_alloc (16, size);
+        memcpy (s->bufs[C_IDX], String_val (colors_v), size);
+    }
 
     s->skin = skin = stat_alloc (s->num_vertices * sizeof (struct skin));
     for (i = 0; i < s->num_vertices; ++i) {
@@ -110,20 +137,20 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
 
     (void) unit_v;
     glEnableClientState (GL_VERTEX_ARRAY);
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-    glVertexPointer (3, GL_FLOAT, 0, NULL);
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
+    glVertexPointer (3, GL_FLOAT, 0, s->bufs[V_IDX]);
 
     glEnableClientState (GL_NORMAL_ARRAY);
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    glNormalPointer (GL_FLOAT, 0, NULL);
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
+    glNormalPointer (GL_FLOAT, 0, s->bufs[V_IDX]);
 
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
-    glTexCoordPointer (2, GL_FLOAT, 0, NULL);
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
+    glTexCoordPointer (2, GL_FLOAT, 0, s->bufs[UV_IDX]);
 
     glEnableClientState (GL_COLOR_ARRAY);
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
-    glColorPointer (4, GL_UNSIGNED_BYTE, 0, NULL);
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
+    glColorPointer (4, GL_UNSIGNED_BYTE, 0, s->bufs[C_IDX]);
 
     return Val_unit;
 }
@@ -135,22 +162,25 @@ CAMLprim value ml_skin_draw_end (value unit_v)
     glDisableClientState (GL_NORMAL_ARRAY);
     glDisableClientState (GL_TEXTURE_COORD_ARRAY);
     glDisableClientState (GL_COLOR_ARRAY);
-    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, 0);
     return Val_unit;
 }
 
-CAMLprim value ml_skin_init (value geom_v)
+CAMLprim value ml_skin_init (value use_vbo_v, value geom_v)
 {
-    CAMLparam1 (geom_v);
+    CAMLparam2 (use_vbo_v, geom_v);
     CAMLlocal5 (vertexa_v, normala_v, uva_v, skin_v, colors_v);
     State *s = &glob_state;
 
+    use_vbo = Bool_val (use_vbo_v);
 #ifdef _WIN32
-    GETPA (BindBuffer);
-    GETPA (GenBuffers);
-    GETPA (BufferData);
-    GETPA (MapBuffer);
-    GETPA (UnmapBuffer);
+    if (use_vbo) {
+        GETPA (BindBuffer);
+        GETPA (GenBuffers);
+        GETPA (BufferData);
+        GETPA (MapBuffer);
+        GETPA (UnmapBuffer);
+    }
 #endif
     vertexa_v = Field (geom_v, 0);
     normala_v = Field (geom_v, 1);
@@ -175,8 +205,8 @@ static void translate (State *s, float *vdst, float *ndst)
     {
         int z = 0;
 #ifdef USE_ALTIVEC
-        float v[4] A16 = {0,0,0,0}, n[4] A16= {0,0,0,0};
-        float v0[4] A16, v1[4] A16, m[16] A16, n1[4];
+        float v[4] A16 = {0,0,0,0}, n[4] A16 = {0,0,0,0};
+        float v0[4] A16, v1[4] A16, m[16] A16, n1[4] A16;
         float w;
 
         vcopy (n1, nsrc);
@@ -184,7 +214,6 @@ static void translate (State *s, float *vdst, float *ndst)
         float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], w, m[12];
         float *n1 = nsrc;
 #endif
-
         for (j = 0; j < skin->num_bones; ++j) {
             w = skin->weights[j];
             b = &s->bones[skin->boneindices[j]];
@@ -203,11 +232,10 @@ static void translate (State *s, float *vdst, float *ndst)
         }
 
         /* hack hack */
-        if (z) vcopy (v, vsrc);
-        vcopy (vdst, v);
+        if (z) vcopy (vdst, vsrc);
+        else vcopy (vdst, v);
         vcopy (ndst, n);
     }
-
 }
 
 CAMLprim value ml_skin_set_skel (value skel_v)
@@ -301,18 +329,24 @@ CAMLprim value ml_skin_anim (value unit_v)
     float *vdst, *vsrc, *ndst, *nsrc;
     State *s = &glob_state;
 
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-    vdst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-    if (!vdst) {
-        fprintf (stderr, "glMapBuffer for vertices failed\n");
-        exit (EXIT_FAILURE);
-    }
+    if (use_vbo) {
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
+        vdst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        if (!vdst) {
+            fprintf (stderr, "glMapBuffer for vertices failed\n");
+            exit (EXIT_FAILURE);
+        }
 
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    ndst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-    if (!ndst) {
-        fprintf (stderr, "glMapBuffer for normals failed\n");
-        exit (EXIT_FAILURE);
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
+        ndst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        if (!ndst) {
+            fprintf (stderr, "glMapBuffer for normals failed\n");
+            exit (EXIT_FAILURE);
+        }
+    }
+    else {
+        vdst = s->bufs[V_IDX];
+        ndst = s->bufs[N_IDX];
     }
 
     vsrc = s->ptrs[V_IDX];
@@ -320,18 +354,20 @@ CAMLprim value ml_skin_anim (value unit_v)
 
     translate (s, vdst, ndst);
 
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-    ret = glUnmapBuffer (GL_ARRAY_BUFFER);
-    if (ret == GL_FALSE) {
-        fprintf (stderr, "glUnmapBuffer for vertices failed\n");
-        exit (EXIT_FAILURE);
-    }
+    if (use_vbo) {
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
+        ret = glUnmapBuffer (GL_ARRAY_BUFFER);
+        if (ret == GL_FALSE) {
+            fprintf (stderr, "glUnmapBuffer for vertices failed\n");
+            exit (EXIT_FAILURE);
+        }
 
-    glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    ret = glUnmapBuffer (GL_ARRAY_BUFFER);
-    if (ret == GL_FALSE) {
-        fprintf (stderr, "glUnmapBuffer for normals failed\n");
-        exit (EXIT_FAILURE);
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
+        ret = glUnmapBuffer (GL_ARRAY_BUFFER);
+        if (ret == GL_FALSE) {
+            fprintf (stderr, "glUnmapBuffer for normals failed\n");
+            exit (EXIT_FAILURE);
+        }
     }
 
     CAMLreturn (Val_unit);

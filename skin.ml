@@ -5,7 +5,7 @@ type vertices = float array
 type normals = float array
 type coords = float array
 
-external init : (vertices * normals * coords * skin * string) -> unit
+external init : bool -> (vertices * normals * coords * skin * string) -> unit
   = "ml_skin_init"
 
 external draw_begin : unit -> unit = "ml_skin_draw_begin"

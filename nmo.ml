@@ -383,7 +383,12 @@ let r xff sbufxff =
 let draw geom =
   let l = lazy
     (
-      Skin.init (geom.vertexa, geom.normala, geom.uva, geom.skin, geom.colora)
+      let use_vbo =
+        !Rend.try_vbo && GlMisc.check_extension "GL_ARB_vertex_buffer_object"
+      in
+      Skin.init
+        use_vbo
+        (geom.vertexa, geom.normala, geom.uva, geom.skin, geom.colora)
     )
   in
   fun ~textures ~lighting ~solid ~colormaterial () ->
