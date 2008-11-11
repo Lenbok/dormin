@@ -41,10 +41,10 @@ type view =
 
 let view =
   { w = 0; h = 0
-  ; rotx = 0.0; roty = 0.0; rotz = 0.0
+  ; rotx = 4.0; roty = 16.0; rotz = 0.0
   ; center = (0.0, 0.0, 0.0)
   ; radial_scale = 0.0
-  ; zoom = 1.0
+  ; zoom = 1.2
   ; objs = []
   ; persp = true
   ; last_time = 0.0
