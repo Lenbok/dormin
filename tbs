@@ -26,7 +26,9 @@ cc="cc"
 ccopt="-O"
 test $(hostname) = "linmac" && {
     cc="$HOME/x/dev/gcc-4.3.0/bin/gcc";
-    ccopt="-Wall -Werror -Wextra -O3 -maltivec -Wno-unused-function";
+    ccopt="-Wall -Werror -Wextra -O3 -mabi=altivec -maltivec -Wno-unused-function";
+    ccopt="$ccopt -fprefetch-loop-arrays -mtune=7450 -funroll-all-loops"
+    ccopt="$ccopt -ftree-loop-linear -ftree-vectorize"
 }
 
 targets="dormin"
