@@ -418,8 +418,8 @@ let init minmax =
 let _ =
   let setsome r s = r := Some s in
   let spec =
-    ["-slice", Arg.String Slice.openslice, "<path> of file to slice data to"
-    ;"-index", Arg.Set_string Xff.index_path, "<path> of index"
+    ["-slice", Arg.String Slice.openslice, "<path> of file/dir to slice data to"
+    ;"-index", Arg.Set_string Xff.index_path, "<path> to index"
     ;"-base", Arg.String (setsome Xff.base_path), "<directory> base"
     ;"-sstep", Arg.Set_float slerp_step, "<float> slerp step"
     ;"-novbo", Arg.Clear try_vbo, " do not use vertex buffer objects"
