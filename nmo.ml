@@ -131,6 +131,17 @@ let rgeom1 start_index surf1 geom sbuf =
         );
         skip2 12
 
+    | 0x68 when a = 6 ->
+        app c pos index 12 3 (fun pi vi ->
+          let x = rfloat (pi + 0) in
+          let y = rfloat (pi + 4) in
+          let z = rfloat (pi + 8) in
+          let _ = x,y,z in
+          if false then
+            printf "% f, % f, % f -> %f@." x y z (sqrt (x*.x +. y*.y +. z*.z));
+        );
+        skip2 12
+
     | 0x6c when a = 0 -> skip (pos + 16*c)
     | 0x6c ->
         app c pos index 16 1 (fun pi index ->
