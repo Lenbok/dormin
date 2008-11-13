@@ -113,78 +113,74 @@ let rgeom1 start_index surf1 geom sbuf =
 
     | 0x68 when a = 1 ->
         let index = index + prev_count in
-        for i = 0 to pred c do
-          let vi = index*3 + i*3
-          and pi = pos + i*12 in
+        app c pos index 12 3 (fun pi vi ->
           geom.vertexa.(vi + 0) <- rfloat (pi + 0);
           geom.vertexa.(vi + 1) <- rfloat (pi + 4);
           geom.vertexa.(vi + 2) <- rfloat (pi + 8);
-        done;
+        );
         r (c :: counts) index c (pos + c*12)
 
     | 0x68 when a = 2 ->
-        for i = 0 to pred c do
-          let vi = index*3 + i*3 in
-          let x = rfloat (pos + i*12 + 0) in
-          let y = rfloat (pos + i*12 + 4) in
-          let z = rfloat (pos + i*12 + 8) in
+        app c pos index 12 3 (fun pi vi ->
+          let x = rfloat (pi + 0) in
+          let y = rfloat (pi + 4) in
+          let z = rfloat (pi + 8) in
           geom.normala.(vi + 0) <- x;
           geom.normala.(vi + 1) <- y;
           geom.normala.(vi + 2) <- z;
-        done;
+        );
         skip2 12
 
     | 0x6c when a = 0 -> skip (pos + 16*c)
     | 0x6c ->
-        for i = 0 to pred c do
-          let pi = pos + i*16 in
+        app c pos index 16 1 (fun pi index ->
           let a = rfloat (pi + 0) in
           let b = rfloat (pi + 4) in
           let c = rfloat (pi + 8) in
           let d = Xff.rint sbuf (pi + 12) in
-          geom.skin.(index + i) <- (a,b,c,d);
-        done;
+          if a < 0.0 || b < 0.0 || c < 0.0
+          then
+            printf "%d: % f, % f, % f : %d@." index a b c d
+          ;
+          geom.skin.(index) <- (a,b,c,d);
+        );
         skip2 16
 
     | 0x6d when a = 2 ->
-        for i = 0 to pred c do
-          let vi = index*3 + i*3 in
-          let x = r16s (pos + i*8 + 0) in
-          let y = r16s (pos + i*8 + 2) in
-          let z = r16s (pos + i*8 + 4) in
+        app c pos index 8 3 (fun pi vi ->
+          let x = r16s (pi + 0) in
+          let y = r16s (pi + 2) in
+          let z = r16s (pi + 4) in
           geom.normala.(vi + 0) <- float x /. 4096.;
           geom.normala.(vi + 1) <- float y /. 4096.;
           geom.normala.(vi + 2) <- float z /. 4096.;
-        done;
+        );
         skip2 8
 
     | 0x6d when a = 3 ->
-        for i = 0 to pred c do
-          let a = r16s (pos + i*8 + 0) in
-          let b = r16s (pos + i*8 + 2) in
-          let c = r16s (pos + i*8 + 4) in
-          let d = r16s (pos + i*8 + 6) in
+        app c pos index 8 1 (fun pi vi ->
+          let a = r16s (pi + 0) in
+          let b = r16s (pi + 2) in
+          let c = r16s (pi + 4) in
+          let d = r16s (pi + 6) in
           let i = float a /. 4096. in
           let j = float b /. 4096. in
           let k = float c /. 4096. in
           let s = float d /. 4096. in
           let _ = i,j,k,s in ()
-        done;
+        );
         skip2 8
 
     | 0x6d ->
         skip2 8
 
     | 0x6e ->
-        for i = 0 to pred c do
-          let vi = index*4 + i*4 in
-          Xff.sbufblt sbuf
-            ~dst:geom.colora
-            ~src_pos:(pos + i*4)
-            ~dst_pos:vi
-            ~len:4
-          ;
-        done;
+        Xff.sbufblt sbuf
+          ~dst:geom.colora
+          ~src_pos:pos
+          ~dst_pos:(index*4)
+          ~len:(c*4)
+        ;
         skip2 4
 
     | 0x00 when a = 0 && b = 0 && c = 0 ->
