@@ -142,7 +142,7 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
 
     glEnableClientState (GL_NORMAL_ARRAY);
     if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    glNormalPointer (GL_FLOAT, 0, s->bufs[V_IDX]);
+    glNormalPointer (GL_FLOAT, 0, s->bufs[N_IDX]);
 
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
     if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
