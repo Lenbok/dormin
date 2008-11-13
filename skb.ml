@@ -214,16 +214,39 @@ let main name =
       | [] ->
           let quats = skbquats bones in
           dummy (draw bones quats)
-      | hd :: tl ->
-          let ranb name =
-            let xff, sbuf = Xff.test2 (Filename.basename name) in
+      | list ->
+          let ranb aname =
+            let xff, sbuf = Xff.test2 (Filename.basename aname) in
             let anim = Anb.r xff sbuf in
+            let (_, abones) = anim in
+            if Array.length abones != Array.length bones
+            then
+              failwith (sprintf "invalid animation %s for skeleton %s"
+                           aname name);
             anim
           in
-          let anim =
-            List.fold_left
-              (fun accu name -> Anb.append accu (ranb name)) (ranb hd) tl
+          let rec run1 = function
+            | [] -> failwith "no animations"
+            | hd :: tl ->
+                try
+                  let anim = ranb hd in
+                  run2 anim tl
+                with exn ->
+                  prerr_endline (Printexc.to_string exn);
+                  run1 tl
+          and run2 accu = function
+            | [] -> accu
+            | hd :: tl ->
+                let accu =
+                  try
+                    Anb.append accu (ranb hd)
+                  with exn ->
+                    prerr_endline (Printexc.to_string exn);
+                    accu
+                in
+                run2 accu tl
           in
+          let anim = run1 list in
           skin bones;
           obj bones anim;
       end;
