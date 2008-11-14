@@ -310,7 +310,7 @@ static void translate (State *s, float *vdst, float *ndst)
         {
             int z = 0;
             float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w, m[12];
-            float *n1 = nsrc;
+
             for (j = 0; j < skin->num_bones; ++j) {
                 w = skin->weights[j];
                 b = &s->bones[skin->boneindices[j]];
@@ -320,7 +320,7 @@ static void translate (State *s, float *vdst, float *ndst)
 
                 mscale (m, b->cm, w);
                 mapply_to_point (v0, m, v0);
-                mapply_to_vector (v1, m, n1);
+                mapply_to_vector (v1, m, nsrc);
                 vaddto (v, v0);
                 vaddto (n, v1);
             }
