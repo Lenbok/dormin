@@ -77,7 +77,7 @@ static void qcompose (float *res, float *q1, float *q2)
     res[3] = q1[3]*q2[3] - q1[0]*q2[0] - q1[1]*q2[1] - q1[2]*q2[2];
 }
 
-static void q2matrix (float *mat, float *q, float *v)
+static void q2matrixt (float *mat, float *q, float *v)
 {
     float X = q[0];
     float Y = q[1];
@@ -119,70 +119,11 @@ static void q2matrix (float *mat, float *q, float *v)
 #endif
 }
 
-#ifdef USE_ALTIVEC
-#include <altivec.h>
-#include <malloc.h>
-
-#define simd_alloc memalign
-#define A16 __attribute__ ((aligned (16)))
-
-static void mscale (float *res, float *m, float s)
+static void q2matrix (float *mat, float *q)
 {
-    vector float vs = {s,s,s,s};
-    vector float r0 = vec_ld (0, m) * vs;
-    vector float r1 = vec_ld (16, m) * vs;
-    vector float r2 = vec_ld (32, m) * vs;
-    vector float r3 = vec_ld (48, m) * vs;
-    vec_st (r0, 0, res);
-    vec_st (r1, 16, res);
-    vec_st (r2, 32, res);
-    vec_st (r3, 48, res);
+    float z[3] = {0,0,0};
+    q2matrixt (mat, q, z);
 }
-
-/* http://www.freevec.org/category/simd/algorithms/algebra/matrix_operations */
-static void mapply_to_point (float *res, float *m, float *v)
-{
-    vector float vv = vec_ld (0, v);
-    vector float r0 = vec_ld (0, m);
-    vector float r1 = vec_ld (16, m);
-    vector float r2 = vec_ld (32, m);
-    vector float r4 = vec_ld (48, m);
-    vector float x = vec_splat (vv, 0);
-    vector float y = vec_splat (vv, 1);
-    vector float z = vec_splat (vv, 2);
-    vector float vr1 = vec_madd (r0, x, r4);
-    vector float vr2 = vec_madd (r1, y, vr1);
-    vector float vr3 = vec_madd (r2, z, vr2);
-    vec_st (vr3, 0, res);
-}
-
-static void mapply_to_vector (float *res, float *m, float *v)
-{
-    vector float vv = vec_ld (0, v);
-    vector float r0 = vec_ld (0, m);
-    vector float r1 = vec_ld (16, m);
-    vector float r2 = vec_ld (32, m);
-    vector float vz = (vector float) vec_splat_u32 (0);
-    vector float x = vec_splat (vv, 0);
-    vector float y = vec_splat (vv, 1);
-    vector float z = vec_splat (vv, 2);
-    vector float vr1 = vec_madd (r0, x, vz);
-    vector float vr2 = vec_madd (r1, y, vr1);
-    vector float vr3 = vec_madd (r2, z, vr2);
-    vec_st (vr3, 0, res);
-}
-
-static void vaddto (float *v1, float *v2)
-{
-    vector float a = vec_ld (0, v1);
-    vector float b = vec_ld (0, v2);
-    vec_st (vec_add (a, b), 0, v1);
-}
-
-#else
-
-#define simd_alloc(a, s) stat_alloc (s)
-#define A16
 
 static void mscale (float *res, float *m, float s)
 {
@@ -216,4 +157,3 @@ static void vaddto (float *v1, float *v2)
     v1[1] += v2[1];
     v1[2] += v2[2];
 }
-#endif

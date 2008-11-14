@@ -12,11 +12,34 @@
 
 enum {V_IDX, N_IDX, UV_IDX, C_IDX, COUNT};
 
+#ifdef USE_ALTIVEC
+/* Altivec code derived from: */
+/* http://www.freevec.org/category/simd/algorithms/algebra/matrix_operations */
+
+#include <altivec.h>
+#include <malloc.h>
+
+#define simd_alloc memalign
+#define A16 __attribute__ ((aligned (16)))
+#define STRIDE 16
+
+#else
+
+#define STRIDE 0
+#define simd_alloc(a, s) stat_alloc (s)
+#define A16
+
+#endif
+
 struct skin {
     int boneindices[3];
+#ifdef USE_ALTIVEC
+    float weights[12] A16;
+#else
     float weights[3];
+#endif
     int num_bones;
-};
+} A16;
 
 struct bone {
     int parent;
@@ -31,9 +54,8 @@ struct bone {
     float amq[4];
     float amv[4];
 
-    float am[16] A16;
-    float im[16] A16;
-};
+    float cm[16] A16;
+} A16;
 
 typedef struct {
     int num_bones;
@@ -60,11 +82,22 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
     if (use_vbo)
         glGenBuffers (COUNT, s->bufid);
 
+#ifdef USE_ALTIVEC
+    size = s->num_vertices * sizeof (GLfloat) * 4;
+    p = s->ptrs[V_IDX] = simd_alloc (16, size);
+    for (i = 0; i < s->num_vertices; ++i) {
+        p[i*4 + 0] = Double_field (vertexa_v, i*3 + 0);
+        p[i*4 + 1] = Double_field (vertexa_v, i*3 + 1);
+        p[i*4 + 2] = Double_field (vertexa_v, i*3 + 2);
+        p[i*4 + 3] = 1.0;
+    }
+#else
     size = s->num_vertices * sizeof (GLfloat) * 3;
-    p = s->ptrs[V_IDX] = stat_alloc (size);
+    p = s->ptrs[V_IDX] = simd_alloc (16, size);
     for (i = 0; i < s->num_vertices * 3; ++i) {
         p[i] = Double_field (vertexa_v, i);
     }
+#endif
     if (use_vbo) {
         glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
         glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
@@ -74,10 +107,20 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
         memcpy (s->bufs[V_IDX], p, size);
     }
 
-    p = s->ptrs[N_IDX] = stat_alloc (size);
+#ifdef USE_ALTIVEC
+    p = s->ptrs[N_IDX] = simd_alloc (16, size);
+    for (i = 0; i < s->num_vertices; ++i) {
+        p[i*4 + 0] = Double_field (normala_v, i*3 + 0);
+        p[i*4 + 1] = Double_field (normala_v, i*3 + 1);
+        p[i*4 + 2] = Double_field (normala_v, i*3 + 2);
+        p[i*4 + 3] = 1.0;
+    }
+#else
+    p = s->ptrs[N_IDX] = simd_alloc (16, size);
     for (i = 0; i < s->num_vertices * 3; ++i) {
         p[i] = Double_field (normala_v, i);
     }
+#endif
     if (use_vbo) {
         glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
         glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
@@ -88,7 +131,7 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
     }
 
     size = s->num_vertices * sizeof (GLfloat) * 2;
-    p = s->ptrs[UV_IDX] = stat_alloc (size);
+    p = s->ptrs[UV_IDX] = simd_alloc (16, size);
     for (i = 0; i < s->num_vertices * 2; ++i) {
         p[i] = Double_field (uva_v, i);
     }
@@ -112,7 +155,7 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
         memcpy (s->bufs[C_IDX], String_val (colors_v), size);
     }
 
-    s->skin = skin = stat_alloc (s->num_vertices * sizeof (struct skin));
+    s->skin = skin = simd_alloc (16, s->num_vertices * sizeof (struct skin));
     for (i = 0; i < s->num_vertices; ++i) {
         int j;
         value v;
@@ -121,11 +164,18 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
         skin[i].num_bones = Int_val (Field (v, 3));
 
         for (j = 0; j < skin[i].num_bones; ++j) {
-            double val;
+            double val, w;
 
             val = Double_val (Bp_val (Field (v, j)));
             skin[i].boneindices[j] = (int) val;
-            skin[i].weights[j] = val - skin[i].boneindices[j];
+            w = val - skin[i].boneindices[j];
+#ifdef USE_ALTIVEC
+            vector float vw = {w,w,w,w};
+
+            vec_st (vw, j*16, skin[i].weights);
+#else
+            skin[i].weights[j] = w;
+#endif
             skin[i].boneindices[j] += 1;
         }
     }
@@ -138,11 +188,11 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
     (void) unit_v;
     glEnableClientState (GL_VERTEX_ARRAY);
     if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-    glVertexPointer (3, GL_FLOAT, 0, s->bufs[V_IDX]);
+    glVertexPointer (3, GL_FLOAT, STRIDE, s->bufs[V_IDX]);
 
     glEnableClientState (GL_NORMAL_ARRAY);
     if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    glNormalPointer (GL_FLOAT, 0, s->bufs[N_IDX]);
+    glNormalPointer (GL_FLOAT, STRIDE, s->bufs[N_IDX]);
 
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
     if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
@@ -200,42 +250,88 @@ static void translate (State *s, float *vdst, float *ndst)
     float *nsrc = s->ptrs[N_IDX];
     struct skin *skin = s->skin;
 
+#ifdef USE_ALTIVEC
+    for (i = 0; i < s->num_vertices; ++i, ++skin) {
+        vector float v, n, vs, ns, vz;
+        vector float r0, r1, r2, r3, nx, ny, nz;
+
+        v = n = vz = (vector float) vec_splat_u32 (0);
+
+        vs = vec_ld (i<<4, vsrc);
+        ns = vec_ld (i<<4, nsrc);
+
+        nx = vec_splat (ns, 0);
+        ny = vec_splat (ns, 1);
+        nz = vec_splat (ns, 2);
+
+        for (j = 0; j < skin->num_bones; ++j) {
+            vector float vw, v1, x, y, z, t0, t1, t2;
+
+            b = &s->bones[skin->boneindices[j]];
+
+            v1 = vec_sub (vs, vec_ld (0, b->mv));
+            vw = vec_ld (j<<4, skin->weights);
+
+            r0 = vec_madd (vec_ld ( 0, b->cm), vw, vz);
+            r1 = vec_madd (vec_ld (16, b->cm), vw, vz);
+            r2 = vec_madd (vec_ld (32, b->cm), vw, vz);
+            r3 = vec_madd (vec_ld (48, b->cm), vw, vz);
+
+            x = vec_splat (v1, 0);
+            y = vec_splat (v1, 1);
+            z = vec_splat (v1, 2);
+
+            t0 = vec_madd (r0, x, r3);
+            t1 = vec_madd (r1, y, t0);
+            t2 = vec_madd (r2, z, t1);
+            v = vec_add (v, t2);
+
+            t0 = vec_madd (r0, nx, n);
+            t1 = vec_madd (r1, ny, t0);
+            n = vec_madd (r2, nz, t1);
+        }
+        vec_st (v, i<<4, vdst);
+        vec_st (n, i<<4, ndst);
+    }
+#else
     for (i = 0; i < s->num_vertices; ++i,
              vsrc += 3, nsrc += 3, vdst += 3, ndst += 3, ++skin)
     {
-        int z = 0;
-#ifdef USE_ALTIVEC
-        float v[4] A16 = {0,0,0,0}, n[4] A16 = {0,0,0,0};
-        float v0[4] A16, v1[4] A16, m[16] A16, n1[4] A16;
-        float w;
+        if (skin->num_bones == 1) {
+            float v0[4];
 
-        vcopy (n1, nsrc);
-#else
-        float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[3], v1[3], w, m[12];
-        float *n1 = nsrc;
-#endif
-        for (j = 0; j < skin->num_bones; ++j) {
-            w = skin->weights[j];
-            b = &s->bones[skin->boneindices[j]];
+            b = &s->bones[skin->boneindices[0]];
 
-            if (w < 0.0) z = 1;
             vsub (v0, vsrc, b->mv);
-            mapply_to_vector (v1, b->im, v0);
-
-            mscale (m, b->am, w);
-            mapply_to_point (v0, m, v1);
-            vaddto (v, v0);
-
-            mapply_to_vector (v0, b->im, n1);
-            mapply_to_vector (v1, m, v0);
-            vaddto (n, v1);
+            mapply_to_point (vdst, b->cm, v0);
+            mapply_to_vector (ndst, b->cm, nsrc);
         }
+        else
+        {
+            int z = 0;
+            float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w, m[12];
+            float *n1 = nsrc;
+            for (j = 0; j < skin->num_bones; ++j) {
+                w = skin->weights[j];
+                b = &s->bones[skin->boneindices[j]];
 
-        /* hack hack */
-        if (z) vcopy (vdst, vsrc);
-        else vcopy (vdst, v);
-        vcopy (ndst, n);
+                if (w < 0.0) z = 1;
+                vsub (v0, vsrc, b->mv);
+
+                mscale (m, b->cm, w);
+                mapply_to_point (v0, m, v0);
+                mapply_to_vector (v1, m, n1);
+                vaddto (v, v0);
+                vaddto (n, v1);
+            }
+
+            /* hack hack */
+            if (z) vcopy (vdst, vsrc);
+            else vcopy (vdst, v);
+            vcopy (ndst, n);
+        }
     }
+#endif
 }
 
 CAMLprim value ml_skin_set_skel (value skel_v)
@@ -277,15 +373,12 @@ CAMLprim value ml_skin_set_skel (value skel_v)
 
     b = s->bones + 1;
     for (i = 0; i < s->num_bones; ++i, ++b) {
-        float v[3], q[4], z[3] = {0,0,0};
+        float v[3];
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->mq, b->v);
         qcompose (b->mq, b->q, parent->mq);
         vadd (b->mv, v, parent->mv);
-
-        qconjugate (q, b->mq);
-        q2matrix (b->im, q, z);
     }
 
     CAMLreturn (Val_unit);
@@ -309,14 +402,16 @@ CAMLprim value ml_skin_set_anim (value anim_v)
 
     b = s->bones + 1;
     for (i = 0; i < s->num_bones; ++i, ++b) {
-        float v[3];
+        float v[3], q[4], q1[4];;
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->amq, b->v);
         qcompose (b->amq, b->aq, parent->amq);
         vadd (b->amv, v, parent->amv);
 
-        q2matrix (b->am, b->amq, b->amv);
+        qconjugate (q1, b->mq);
+        qcompose (q, q1, b->amq);
+        q2matrixt (b->cm, q, b->amv);
     }
 
     CAMLreturn (Val_unit);
