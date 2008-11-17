@@ -347,7 +347,12 @@ let r xff sbufxff =
             GlTex.parameter `texture_2d (`mag_filter `linear);
             if !Rend.mipmaps then (
               GlTex.parameter `texture_2d (`min_filter `linear_mipmap_linear);
-              GlTex.parameter `texture_2d (`generate_mipmap true);
+              (* GlTex.parameter `texture_2d (`generate_mipmap true); *)
+              let module M =
+                  struct
+                    external genmipmaps:unit -> unit = "ml_set_generate_mipmaps"
+                  end
+              in M.genmipmaps ()
             )
             else (
               GlTex.parameter `texture_2d (`min_filter `linear);
@@ -391,7 +396,7 @@ let draw geom =
   let l = lazy
     (
       let use_vbo =
-        !Rend.try_vbo && GlMisc.check_extension "GL_ARB_vertex_buffer_object"
+        !Rend.try_vbo && Glut.extensionSupported "GL_ARB_vertex_buffer_object"
       in
       Skin.init
         use_vbo

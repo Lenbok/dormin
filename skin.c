@@ -449,7 +449,7 @@ CAMLprim value ml_skin_set_anim (value anim_v)
 
     b = s->bones + 1;
     for (i = 0; i < s->num_bones; ++i, ++b) {
-        float v[3], q[4], q1[4];;
+        float v[3], q[4], q1[4];
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->amq, b->v);
@@ -513,4 +513,15 @@ CAMLprim value ml_skin_anim (value unit_v)
     }
 
     CAMLreturn (Val_unit);
+}
+
+#ifndef GL_GENERATE_MIPMAP
+#define GL_GENERATE_MIPMAP                0x8191
+#endif
+
+CAMLprim value ml_set_generate_mipmaps (value unit_v)
+{
+    (void) unit_v;
+    glTexParameteri (GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    return Val_unit;
 }
