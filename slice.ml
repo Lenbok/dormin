@@ -15,8 +15,12 @@ let add name data =
       close_out oc
 ;;
 
+let is_directory path =
+  try (Unix.stat path).Unix.st_kind = Unix.S_DIR with _ -> false
+;;
+
 let openslice name =
-  if Sys.is_directory name
+  if is_directory name
   then
     slice := `dir name
   else
