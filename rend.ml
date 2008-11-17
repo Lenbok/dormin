@@ -436,6 +436,12 @@ let _ =
       then anb_names := s :: !anb_names
       else nmo_name := Some s;
     )
-    "Usage: dormin [options] model.nmo [animation.anb ...]";
+    "Usage: dormin [options] model.nmo [animation.anb ...]"
+  ;
+  if !mipmaps && not (Glut.extensionSupported "GL_SGIS_generate_mipmap")
+  then (
+    Format.eprintf "OpenGL does not support automatic mipmap generation@.";
+    mipmaps := false;
+  );
   Skin.set !vp_name;
 ;;
