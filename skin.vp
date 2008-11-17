@@ -1,0 +1,74 @@
+!!ARBvp1.0
+
+PARAM c4 = {4, 0, 20, 1};
+PARAM mvp[4] = { state.matrix.mvp };
+PARAM anim[] = { program.local[0..121] };
+
+ATTRIB position = vertex.attrib[0];
+ATTRIB normal   = vertex.attrib[2];
+ATTRIB color    = vertex.attrib[3];
+ATTRIB weights  = vertex.attrib[6];
+ATTRIB texcoord = vertex.attrib[8];
+
+TEMP v, v2, v1, r0, r1, r2, t0, w;
+ADDRESS a0;
+
+#######################################################################
+FRC w, weights;
+FLR t0, weights;
+
+ARL a0.x, t0.x;
+
+MUL r0, anim[a0.x+0], w.x;
+MUL r1, anim[a0.x+1], w.x;
+MUL r2, anim[a0.x+2], w.x;
+SUB v1.xyz, position, anim[a0.x+3];
+
+DPH v.x, v1, r0;
+DPH v.y, v1, r1;
+DPH v.z, v1, r2;
+
+##############################
+ARL a0.x, t0.y;
+
+MUL r0, anim[a0.x+0], w.y;
+MUL r1, anim[a0.x+1], w.y;
+MUL r2, anim[a0.x+2], w.y;
+SUB v1.xyz, position, anim[a0.x+3];
+
+DPH v2.x, v1, r0;
+DPH v2.y, v1, r1;
+DPH v2.z, v1, r2;
+
+MAD v.xyz, anim[a0.x+3].w, v2, v;
+
+##############################
+ARL a0.x, t0.z;
+
+MUL r0, anim[a0.x+0], w.z;
+MUL r1, anim[a0.x+1], w.z;
+MUL r2, anim[a0.x+2], w.z;
+SUB v1.xyz, position, anim[a0.x+3];
+
+DPH v2.x, v1, r0;
+DPH v2.y, v1, r1;
+DPH v2.z, v1, r2;
+
+MAD v.xyz, anim[a0.x+3].w, v2, v;
+
+MOV v.w, c4.w;
+######################################################################
+#MOV v, position;
+DP4 result.position.x, mvp[0], v;
+DP4 result.position.y, mvp[1], v;
+DP4 result.position.z, mvp[2], v;
+DP4 result.position.w, mvp[3], v;
+
+MOV result.color, color;
+MOV result.texcoord, texcoord;
+
+END
+
+# Local Variables:
+# mode: python
+# End:

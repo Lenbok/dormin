@@ -5,13 +5,6 @@ static void vneg (float *res, float *v)
     res[2] = -v[2];
 }
 
-static void vcopy (float *res, float *v)
-{
-    *res++ = *v++;
-    *res++ = *v++;
-    *res++ = *v++;
-}
-
 static void vadd (float *res, float *v1, float *v2)
 {
     res[0] = v1[0] + v2[0];
@@ -19,22 +12,10 @@ static void vadd (float *res, float *v1, float *v2)
     res[2] = v1[2] + v2[2];
 }
 
-static void vsub (float *res, float *v1, float *v2)
-{
-    res[0] = v1[0] - v2[0];
-    res[1] = v1[1] - v2[1];
-    res[2] = v1[2] - v2[2];
-}
-
 static void qconjugate (float *res, float *q)
 {
     vneg (res, q);
     res[3] = q[3];
-}
-
-static float qmagnitude (float *q)
-{
-    return sqrt (q[0]*q[0]+q[1]*q[1]+q[2]*q[2]+q[3]*q[3]);
 }
 
 static void qapply (float *res, float *q, float *v)
@@ -61,14 +42,6 @@ static void qapply (float *res, float *q, float *v)
     res[2] = 2*( (t7 -  t3)*v1 + (t2 +  t9)*v2 + (t5 + t8)*v3 ) + v3;
 }
 
-static void qscale (float *res, float *q, float scale)
-{
-    *res++ = *q++ * scale;
-    *res++ = *q++ * scale;
-    *res++ = *q++ * scale;
-    *res++ = *q++ * scale;
-}
-
 static void qcompose (float *res, float *q1, float *q2)
 {
     res[0] = q1[3]*q2[0] + q1[0]*q2[3] + q1[1]*q2[2] - q1[2]*q2[1];
@@ -77,6 +50,7 @@ static void qcompose (float *res, float *q1, float *q2)
     res[3] = q1[3]*q2[3] - q1[0]*q2[0] - q1[1]*q2[1] - q1[2]*q2[2];
 }
 
+#ifndef USE_VP
 static void q2matrixt (float *mat, float *q, float *v)
 {
     float X = q[0];
@@ -119,18 +93,12 @@ static void q2matrixt (float *mat, float *q, float *v)
 #endif
 }
 
-static void q2matrix (float *mat, float *q)
-{
-    float z[3] = {0,0,0};
-    q2matrixt (mat, q, z);
-}
-
+#ifndef USE_ALTIVEC
 static void mscale (float *res, float *m, float s)
 {
     int i;
     for (i = 0; i < 12; ++i) *res++ = *m++ * s;
 }
-
 static void mapply_to_point (float *res, float *m, float *v)
 {
     float x = v[0];
@@ -157,3 +125,58 @@ static void vaddto (float *v1, float *v2)
     v1[1] += v2[1];
     v1[2] += v2[2];
 }
+
+static void vcopy (float *res, float *v)
+{
+    *res++ = *v++;
+    *res++ = *v++;
+    *res++ = *v++;
+}
+
+static void vsub (float *res, float *v1, float *v2)
+{
+    res[0] = v1[0] - v2[0];
+    res[1] = v1[1] - v2[1];
+    res[2] = v1[2] - v2[2];
+}
+#endif
+
+#else
+
+static void q2matrixt (float *mat, float *q, float *v)
+{
+    float X = q[0];
+    float Y = q[1];
+    float Z = q[2];
+    float W = q[3];
+
+    float xx      = X * X;
+    float xy      = X * Y;
+    float xz      = X * Z;
+    float xw      = X * W;
+
+    float yy      = Y * Y;
+    float yz      = Y * Z;
+    float yw      = Y * W;
+
+    float zz      = Z * Z;
+    float zw      = Z * W;
+
+    mat[0]  = 1 - 2 * ( yy + zz );
+    mat[4]  =     2 * ( xy - zw );
+    mat[8]  =     2 * ( xz + yw );
+
+    mat[1]  =     2 * ( xy + zw );
+    mat[5]  = 1 - 2 * ( xx + zz );
+    mat[9]  =     2 * ( yz - xw );
+
+    mat[2]  =     2 * ( xz - yw );
+    mat[6]  =     2 * ( yz + xw );
+    mat[10] = 1 - 2 * ( xx + yy );
+
+    mat[3] = v[0];
+    mat[7] = v[1];
+    mat[11] = v[2];
+    mat[15] = 1.0;
+}
+#endif

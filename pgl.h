@@ -29,6 +29,32 @@ static PFNGLGENBUFFERSPROC glGenBuffers;
 static PFNGLBUFFERDATAPROC glBufferData;
 static PFNGLMAPBUFFERPROC glMapBuffer;
 static PFNGLUNMAPBUFFERPROC glUnmapBuffer;
+#endif
+
+#ifndef GL_ARB_vertex_program
+#define GL_VERTEX_PROGRAM_ARB             0x8620
+#define GL_PROGRAM_STRING_ARB             0x8628
+#define GL_VERTEX_ATTRIB_ARRAY_POINTER_ARB 0x8645
+#define GL_PROGRAM_ERROR_POSITION_ARB     0x864B
+#define GL_PROGRAM_ERROR_STRING_ARB       0x8874
+#define GL_PROGRAM_FORMAT_ASCII_ARB       0x8875
+#define GL_PROGRAM_FORMAT_ARB             0x8876
+#define GL_PROGRAM_ATTRIBS_ARB            0x88AC
+#define GL_MAX_PROGRAM_ATTRIBS_ARB        0x88AD
+typedef void (APIENTRYP PFNGLPROGRAMSTRINGARBPROC) (GLenum target, GLenum format, GLsizei len, const GLvoid *string);
+typedef void (APIENTRYP PFNGLBINDPROGRAMARBPROC) (GLenum target, GLuint program);
+typedef void (APIENTRYP PFNGLPROGRAMLOCALPARAMETER4FVARBPROC) (GLenum target, GLuint index, const GLfloat *params);
+typedef void (APIENTRYP PFNGLENABLEVERTEXATTRIBARRAYARBPROC) (GLuint index);
+typedef void (APIENTRYP PFNGLDISABLEVERTEXATTRIBARRAYARBPROC) (GLuint index);
+typedef void (APIENTRYP PFNGLVERTEXATTRIBPOINTERARBPROC) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid *pointer);
+static PFNGLBINDPROGRAMARBPROC glBindProgramARB;
+static PFNGLPROGRAMSTRINGARBPROC glProgramStringARB;
+static PFNGLPROGRAMLOCALPARAMETER4FVARBPROC glProgramLocalParameter4fvARB;
+static PFNGLENABLEVERTEXATTRIBARRAYARBPROC glEnableVertexAttribArrayARB;
+static PFNGLENABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArrayARB;
+static PFNGLVERTEXATTRIBPOINTERARBPROC glVertexAttribPointerARB;
+#endif
+
 #define GETPA(name) for (;;) {                                          \
     *(PROC *) &gl##name = wglGetProcAddress ("gl" # name);              \
     if (!gl##name) {                                                    \
@@ -37,4 +63,3 @@ static PFNGLUNMAPBUFFERPROC glUnmapBuffer;
     }                                                                   \
     break;                                                              \
 }
-#endif

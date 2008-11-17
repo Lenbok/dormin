@@ -29,23 +29,25 @@ let boc flags src =
     (StrSet.singleton o)
     [Filename.concat srcdir c]
     (
-      if src = "skin"
-      then StrSet.singleton (Filename.concat srcdir "vec.c")
+      if src = "skin" || src = "skinvp"
+      then StrSet.add "progvp1.h"
+        (StrSet.add (Filename.concat srcdir "pgl.h")
+            (StrSet.singleton (Filename.concat srcdir "vec.c")))
       else StrSet.empty
     )
   ;
 ;;
 
-let bso src =
-  let so = src ^ ".so" in
+let bso name objs =
+  let so = name ^ ".so" in
   let so = Filename.concat (Sys.getcwd ()) so in
-  let o = src ^ ".o" in
+  let o = List.map (fun s -> s ^ ".o") objs in
   ocaml
     cc
     ("-shared -o " ^ so)
     so
     (StrSet.singleton so)
-    [o]
+    o
     StrSet.empty
   ;
   so
@@ -58,8 +60,9 @@ let _ =
   ;
   boc "-g" "swizzle";
   boc "-g" "skin";
-  let so = bso "swizzle" in
-  let so1 = bso "skin" in
+  boc "-g" "skinvp";
+  let so = bso "swizzle" ["swizzle"] in
+  let so1 = bso "skin"  ["skin"; "skinvp"] in
   let prog name cmos =
     ocaml
       "ocamlc.opt"
@@ -69,9 +72,8 @@ let _ =
       (State.dep_sort cmos)
       StrSet.empty
   in
-  prog "dormin" ["slice.cmo"; "xff.cmo"; "nto.cmo"; "rend.cmo";
-                 "vec.cmo"; "anb.cmo"; "skb.cmo"; "skin.cmo";
-                 "nmo.cmo"; "qtr.cmo";
+  prog "dormin" ["slice.cmo"; "xff.cmo"; "nto.cmo"; "skin.cmo"; "rend.cmo";
+                 "vec.cmo"; "anb.cmo"; "skb.cmo"; "nmo.cmo"; "qtr.cmo";
                  so; so1];
   ()
 ;;

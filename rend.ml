@@ -8,6 +8,7 @@ let try_vbo = ref true
 let nmo_name = ref None
 let anb_names = ref []
 let skb_name = ref None
+let vp_name = ref ""
 let mipmaps = ref false
 let slerp_step = ref 1.0
 
@@ -386,14 +387,6 @@ let mouse ~button ~state ~x ~y =
 ;;
 
 let main () =
-  let w = 704
-  and h = 576 in
-  let _ = Glut.init Sys.argv in
-  let () = Glut.initDisplayMode ~depth:true ~double_buffer:true () in
-  let () = Glut.initWindowSize w h in
-  let _ = Glut.createWindow "rend (press 'h' to get help)" in
-  Gl.enable `depth_test;
-  Gl.enable `alpha_test;
   let () = Glut.displayFunc display in
   let () = Glut.reshapeFunc reshape in
   let () = Glut.keyboardFunc keyboard in
@@ -416,6 +409,14 @@ let init minmax =
 ;;
 
 let _ =
+  let w = 704
+  and h = 576 in
+  let _ = Glut.init Sys.argv in
+  let () = Glut.initDisplayMode ~depth:true ~double_buffer:true () in
+  let () = Glut.initWindowSize w h in
+  let _ = Glut.createWindow "rend (press 'h' to get help)" in
+  Gl.enable `depth_test;
+  Gl.enable `alpha_test;
   let setsome r s = r := Some s in
   let spec =
     ["-slice", Arg.String Slice.openslice, "<path> of file/dir to slice data to"
@@ -426,6 +427,7 @@ let _ =
     ;("-skb", Arg.String (setsome skb_name),
      "<name> use specified skb instead of guessing")
     ;"-mipmaps", Arg.Set mipmaps, " use mipmaps"
+    ;"-vp", Arg.Set_string vp_name, "<path> vertex program"
     ]
   in
   Arg.parse (Arg.align spec)
@@ -434,5 +436,6 @@ let _ =
       then anb_names := s :: !anb_names
       else nmo_name := Some s;
     )
-    "Usage: dormin [options] model.nmo [animation.anb ...]"
+    "Usage: dormin [options] model.nmo [animation.anb ...]";
+  Skin.set !vp_name;
 ;;
