@@ -25,14 +25,21 @@ enum {V_IDX, N_IDX, UV_IDX, C_IDX, COUNT};
 #endif
 #define A16 __attribute__ ((aligned (16)))
 #define STRIDE 16
+#define V_ELEMS 4
+#define AL16(i) (((i)+15)&~15)
 
 #else
 
 #define STRIDE 0
+#define V_ELEMS 3
 #define simd_alloc(s) malloc (s)
 #define A16
+#define AL16(i) (i)
 
 #endif
+
+const int usage[COUNT] = {GL_DYNAMIC_DRAW, GL_DYNAMIC_DRAW,
+                          GL_STATIC_DRAW, GL_STATIC_DRAW};
 
 struct skin {
     int boneindices[3];
@@ -64,7 +71,7 @@ typedef struct {
     int num_bones;
     int num_vertices;
     GLuint bufid[COUNT];
-    float *ptrs[COUNT];
+    void *ptrs[COUNT];
     void *bufs[COUNT];
     struct skin *skin;
     struct bone *bones;
@@ -73,93 +80,41 @@ typedef struct {
 static State glob_state;
 static int use_vbo;
 
-static void skin_init (State *s, value vertexa_v, value normala_v,
-                       value uva_v, value skin_v, value colors_v)
+static void copy_vertices (float *p, int num_vertices, value a_v)
+{
+    int i, j, k;
+
+    for (i = 0, j = 0, k = 0; i < num_vertices; ++i) {
+        p[j++] = Double_field (a_v, k++);
+        p[j++] = Double_field (a_v, k++);
+        p[j++] = Double_field (a_v, k++);
+#ifdef USE_ALTIVEC
+        p[j++] = 1.0;
+#endif
+    }
+}
+
+static void set_geom (State *s, value vertexa_v, value normala_v,
+                      value uva_v, value skin_v, value colors_v)
 {
     int i;
-    GLsizei size;
     float *p;
+    int offset;
+    int num_vertices;
     struct skin *skin;
-    s->num_vertices = Wosize_val (vertexa_v) / (Double_wosize * 3);
 
-    if (use_vbo)
-        glGenBuffers (COUNT, s->bufid);
+    num_vertices = Wosize_val (vertexa_v) / (Double_wosize * 3);
 
-#ifdef USE_ALTIVEC
-    size = s->num_vertices * sizeof (GLfloat) * 4;
-    p = s->ptrs[V_IDX] = simd_alloc (size);
-    for (i = 0; i < s->num_vertices; ++i) {
-        p[i*4 + 0] = Double_field (vertexa_v, i*3 + 0);
-        p[i*4 + 1] = Double_field (vertexa_v, i*3 + 1);
-        p[i*4 + 2] = Double_field (vertexa_v, i*3 + 2);
-        p[i*4 + 3] = 1.0;
-    }
-#else
-    size = s->num_vertices * sizeof (GLfloat) * 3;
-    p = s->ptrs[V_IDX] = simd_alloc (size);
-    for (i = 0; i < s->num_vertices * 3; ++i) {
-        p[i] = Double_field (vertexa_v, i);
-    }
-#endif
-    if (use_vbo) {
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-        glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
-    }
-    else {
-        s->bufs[V_IDX] = simd_alloc (size);
-        memcpy (s->bufs[V_IDX], p, size);
-    }
+    copy_vertices (s->ptrs[V_IDX], num_vertices, vertexa_v);
+    copy_vertices (s->ptrs[N_IDX], num_vertices, normala_v);
 
-#ifdef USE_ALTIVEC
-    p = s->ptrs[N_IDX] = simd_alloc (size);
-    for (i = 0; i < s->num_vertices; ++i) {
-        p[i*4 + 0] = Double_field (normala_v, i*3 + 0);
-        p[i*4 + 1] = Double_field (normala_v, i*3 + 1);
-        p[i*4 + 2] = Double_field (normala_v, i*3 + 2);
-        p[i*4 + 3] = 1.0;
-    }
-#else
-    p = s->ptrs[N_IDX] = simd_alloc (size);
-    for (i = 0; i < s->num_vertices * 3; ++i) {
-        p[i] = Double_field (normala_v, i);
-    }
-#endif
-    if (use_vbo) {
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-        glBufferData (GL_ARRAY_BUFFER, size, p, GL_DYNAMIC_DRAW);
-    }
-    else {
-        s->bufs[N_IDX] = simd_alloc (size);
-        memcpy (s->bufs[N_IDX], p, size);
-    }
-
-    size = s->num_vertices * sizeof (GLfloat) * 2;
-    p = s->ptrs[UV_IDX] = simd_alloc (size);
-    for (i = 0; i < s->num_vertices * 2; ++i) {
+    for (i = 0, p = s->ptrs[UV_IDX]; i < num_vertices * 2; ++i) {
         p[i] = Double_field (uva_v, i);
     }
-    if (use_vbo) {
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
-        glBufferData (GL_ARRAY_BUFFER, size, p, GL_STATIC_DRAW);
-    }
-    else {
-        s->bufs[UV_IDX] = simd_alloc (size);
-        memcpy (s->bufs[UV_IDX], p, size);
-    }
-    free (p);
+    memcpy (s->ptrs[C_IDX], String_val (colors_v), num_vertices * 4);
 
-    size = s->num_vertices * 4;
-    if (use_vbo) {
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
-        glBufferData (GL_ARRAY_BUFFER, size, String_val (colors_v), GL_STATIC_DRAW);
-    }
-    else {
-        s->bufs[C_IDX] = simd_alloc (size);
-        memcpy (s->bufs[C_IDX], String_val (colors_v), size);
-    }
-
-    s->skin = skin = simd_alloc (s->num_vertices * sizeof (struct skin));
-    for (i = 0; i < s->num_vertices; ++i) {
+    skin = s->skin;
+    for (i = 0; i < num_vertices; ++i) {
         int j;
         value v;
 
@@ -167,9 +122,10 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
         skin[i].num_bones = Int_val (Field (v, 3));
 
         for (j = 0; j < skin[i].num_bones; ++j) {
-            double val, w;
+            double val, w, r;
 
             val = Double_val (Bp_val (Field (v, j)));
+
             skin[i].boneindices[j] = (int) val;
             w = val - skin[i].boneindices[j];
 #ifdef USE_ALTIVEC
@@ -180,6 +136,58 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
             skin[i].weights[j] = w;
 #endif
             skin[i].boneindices[j] += 1;
+        }
+    }
+}
+
+static void skin_init (State *s, value vertexa_v, value normala_v,
+                       value uva_v, value skin_v, value colors_v)
+{
+    int i;
+    char *p;
+    GLsizei size;
+    int sizes[COUNT], offsets[COUNT];
+
+    s->num_vertices = Wosize_val (vertexa_v) / (Double_wosize * 3);
+
+    sizes[V_IDX] = V_ELEMS * sizeof (GLfloat);
+    sizes[N_IDX] = V_ELEMS * sizeof (GLfloat);
+    sizes[UV_IDX] = 2 * sizeof (GLfloat);
+    sizes[C_IDX] = 4;
+
+    for (i = 0, size = 0; i < COUNT; ++i) {
+        offsets[i] = size;
+        sizes[i] *= s->num_vertices;
+        size += sizes[i];
+    }
+
+    p = simd_alloc (AL16 (size) + s->num_vertices * sizeof (struct skin));
+    s->skin = (struct skin *) (p + AL16 (size));
+
+    for (i = 0; i < COUNT; ++i) s->ptrs[i] = p + offsets[i];
+
+    set_geom (s, vertexa_v, normala_v, uva_v, skin_v, colors_v);
+
+    if (use_vbo) {
+        glGenBuffers (COUNT, s->bufid);
+
+        for (i = 0; i < COUNT; ++i) {
+            glBindBuffer (GL_ARRAY_BUFFER, s->bufid[i]);
+            glBufferData (GL_ARRAY_BUFFER, sizes[i], NULL, usage[i]);
+            glBufferSubData (GL_ARRAY_BUFFER, 0, sizes[i], s->ptrs[i]);
+            s->bufs[i] = NULL;
+        }
+        glBindBuffer (GL_ARRAY_BUFFER, 0);
+    }
+    else {
+        for (i = 0; i < COUNT; ++i) {
+            if (usage[i] == GL_STATIC_DRAW) {
+                s->bufs[i] = s->ptrs[i];
+            }
+            else {
+                s->bufs[i] = simd_alloc (sizes[i]);
+                memcpy (s->bufs[i], s->ptrs[i], sizes[i]);
+            }
         }
     }
 }
