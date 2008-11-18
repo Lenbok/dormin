@@ -293,12 +293,6 @@ static void translate (State *s, float *vdst, float *ndst)
 
         for (j = 0; j < skin->num_bones; ++j) {
             vector float vw, v1, x, y, z, t0, t1, t2;
-#if 1
-            vector unsigned char p0 =
-                {12,13,14,15,28,29,30,31};
-            vector unsigned char p1 =
-                {0,1,2,3,4,5,6,7,28,29,30,31};
-#endif
 
             b = &s->bones[skin->boneindices[j]];
 
@@ -309,13 +303,7 @@ static void translate (State *s, float *vdst, float *ndst)
             r2 = vec_ld (32, b->cm);
             r3 = vec_ld (48, b->cm);
 
-#if 0
             v1 = vec_sub (vs, vec_ld (0, b->mv));
-#else
-            t0 = vec_perm (r0, r1, p0);
-            t1 = vec_perm (t0, r2, p1);
-            v1 = vec_sub (vs, t1);
-#endif
 
             r0 = vec_madd (r0, vw, vz);
             r1 = vec_madd (r1, vw, vz);
