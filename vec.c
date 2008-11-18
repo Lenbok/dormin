@@ -94,11 +94,6 @@ static void q2matrixt (float *mat, float *q, float *v)
 }
 
 #ifndef USE_ALTIVEC
-static void mscale (float *res, float *m, float s)
-{
-    int i;
-    for (i = 0; i < 12; ++i) *res++ = *m++ * s;
-}
 static void mapply_to_point (float *res, float *m, float *v)
 {
     float x = v[0];

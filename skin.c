@@ -99,7 +99,6 @@ static void set_geom (State *s, value vertexa_v, value normala_v,
 {
     int i;
     float *p;
-    int offset;
     int num_vertices;
     struct skin *skin;
 
@@ -122,7 +121,7 @@ static void set_geom (State *s, value vertexa_v, value normala_v,
         skin[i].num_bones = Int_val (Field (v, 3));
 
         for (j = 0; j < skin[i].num_bones; ++j) {
-            double val, w, r;
+            double val, w;
 
             val = Double_val (Bp_val (Field (v, j)));
 
@@ -305,11 +304,6 @@ static void translate (State *s, float *vdst, float *ndst)
 
             v1 = vec_sub (vs, vec_ld (0, b->mv));
 
-            r0 = vec_madd (r0, vw, vz);
-            r1 = vec_madd (r1, vw, vz);
-            r2 = vec_madd (r2, vw, vz);
-            r3 = vec_madd (r3, vw, vz);
-
             x = vec_splat (v1, 0);
             y = vec_splat (v1, 1);
             z = vec_splat (v1, 2);
@@ -317,11 +311,12 @@ static void translate (State *s, float *vdst, float *ndst)
             t0 = vec_madd (r0, x, r3);
             t1 = vec_madd (r1, y, t0);
             t2 = vec_madd (r2, z, t1);
-            v = vec_add (v, t2);
+            v = vec_madd (t2, vw, v);
 
-            t0 = vec_madd (r0, nx, n);
+            t0 = vec_madd (r0, nx, vz);
             t1 = vec_madd (r1, ny, t0);
-            n = vec_madd (r2, nz, t1);
+            t2 = vec_madd (r2, nz, t1);
+            n = vec_madd (t2, vw, n);
         }
         vec_st (v, i<<4, vdst);
         vec_st (n, i<<4, ndst);
@@ -342,7 +337,7 @@ static void translate (State *s, float *vdst, float *ndst)
         else
         {
             int z = 0;
-            float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w, m[12];
+            float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w;
 
             for (j = 0; j < skin->num_bones; ++j) {
                 w = skin->weights[j];
@@ -351,11 +346,18 @@ static void translate (State *s, float *vdst, float *ndst)
                 if (w < 0.0) z = 1;
                 vsub (v0, vsrc, b->mv);
 
-                mscale (m, b->cm, w);
-                mapply_to_point (v0, m, v0);
-                mapply_to_vector (v1, m, nsrc);
-                vaddto (v, v0);
-                vaddto (n, v1);
+                mapply_to_point (v1, b->cm, v0);
+                v1[0] *= w;
+                v1[1] *= w;
+                v1[2] *= w;
+
+                mapply_to_vector (v0, b->cm, nsrc);
+                v0[0] *= w;
+                v0[1] *= w;
+                v0[2] *= w;
+
+                vaddto (v, v1);
+                vaddto (n, v0);
             }
 
             /* hack hack */
