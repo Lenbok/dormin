@@ -37,7 +37,7 @@ struct bone {
     float amq[4];
     float amv[4];
 
-    float cm[16];
+    float cm[12];
 };
 
 struct adescr {
@@ -169,7 +169,7 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
             w = val - skin[i].boneindices[j];
             skin[i].weights[j] = w;
             skin[i].boneindices[j] += 1;
-            ((float *) p)[j] = skin[i].boneindices[j] * 4 + w;
+            ((float *) p)[j] = skin[i].boneindices[j] * 3 + w;
         }
 
         for (j = skin[i].num_bones; j < 3; ++j) {
@@ -189,14 +189,13 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
 
 static void skin_anim (State *s)
 {
-    int i, j = 4;
+    int i, j = 3;
     struct bone *b = s->bones + 1;
 
-    for (i = 0; i < s->num_bones; ++i, ++b, j += 4) {
+    for (i = 0; i < s->num_bones; ++i, ++b, j += 3) {
         glProgramLocalParameter4fvARB (GL_VERTEX_PROGRAM_ARB, j + 0, b->cm + 0);
         glProgramLocalParameter4fvARB (GL_VERTEX_PROGRAM_ARB, j + 1, b->cm + 4);
         glProgramLocalParameter4fvARB (GL_VERTEX_PROGRAM_ARB, j + 2, b->cm + 8);
-        glProgramLocalParameter4fvARB (GL_VERTEX_PROGRAM_ARB, j + 3, b->cm + 12);
     }
 }
 
@@ -346,15 +345,6 @@ CAMLprim value ml_skin_set_skel_vp (value skel_v)
         b->cm[0] = 1.0;
         b->cm[5] = 1.0;
         b->cm[10] = 1.0;
-        b->cm[15] = 1.0;
-
-        b->cm[3] = b->mv[0];
-        b->cm[7] = b->mv[1];
-        b->cm[11] = b->mv[2];
-
-        b->cm[12] = b->mv[0];
-        b->cm[13] = b->mv[1];
-        b->cm[14] = b->mv[2];
     }
 
     CAMLreturn (Val_unit);
@@ -378,7 +368,7 @@ CAMLprim value ml_skin_set_anim_vp (value anim_v)
 
     b = s->bones + 1;
     for (i = 0; i < s->num_bones; ++i, ++b) {
-        float v[3], q[4], q1[4];
+        float v[4], v1[4], q[4], q1[4];
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->amq, b->v);
@@ -387,7 +377,10 @@ CAMLprim value ml_skin_set_anim_vp (value anim_v)
 
         qconjugate (q1, b->mq);
         qcompose (q, q1, b->amq);
-        q2matrixt (b->cm, q, b->amv);
+
+        qapply (v, q, b->mv);
+        vsub (v1, b->amv, v);
+        q2matrixt (b->cm, q, v1);
     }
 
     CAMLreturn (Val_unit);

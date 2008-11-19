@@ -1,6 +1,6 @@
 !!ARBvp1.0
 
-PARAM c4 = {4, 0, 20, 1};
+PARAM c4 = {4, 1e-8, 0, 1};
 PARAM mvp[4] = { state.matrix.mvp };
 PARAM anim[] = { program.local[0..121] };
 
@@ -10,51 +10,49 @@ ATTRIB color    = vertex.attrib[3];
 ATTRIB weights  = vertex.attrib[6];
 ATTRIB texcoord = vertex.attrib[8];
 
-TEMP v, v2, v1, r0, r1, r2, t0, w;
+TEMP v, t, w, r0, r1, r2;
 ADDRESS a0;
 
 #######################################################################
 FRC w, weights;
-FLR t0, weights;
 
-ARL a0.x, t0.x;
+ARL a0.x, weights.x;
 
 MUL r0, anim[a0.x+0], w.x;
 MUL r1, anim[a0.x+1], w.x;
 MUL r2, anim[a0.x+2], w.x;
-SUB v1.xyz, position, anim[a0.x+3];
 
-DPH v.x, v1, r0;
-DPH v.y, v1, r1;
-DPH v.z, v1, r2;
+DPH v.x, position, r0;
+DPH v.y, position, r1;
+DPH v.z, position, r2;
 
 ##############################
-ARL a0.x, t0.y;
+ARL a0.x, weights.y;
 
 MUL r0, anim[a0.x+0], w.y;
 MUL r1, anim[a0.x+1], w.y;
 MUL r2, anim[a0.x+2], w.y;
-SUB v1.xyz, position, anim[a0.x+3];
 
-DPH v2.x, v1, r0;
-DPH v2.y, v1, r1;
-DPH v2.z, v1, r2;
+DPH t.x, position, r0;
+DPH t.y, position, r1;
+DPH t.z, position, r2;
 
-MAD v.xyz, anim[a0.x+3].w, v2, v;
+SGE r0, w.y, c4.y;
+MAD v.xyz, r0, t, v;
 
 ##############################
-ARL a0.x, t0.z;
+ARL a0.x, weights.z;
 
 MUL r0, anim[a0.x+0], w.z;
 MUL r1, anim[a0.x+1], w.z;
 MUL r2, anim[a0.x+2], w.z;
-SUB v1.xyz, position, anim[a0.x+3];
 
-DPH v2.x, v1, r0;
-DPH v2.y, v1, r1;
-DPH v2.z, v1, r2;
+DPH t.x, position, r0;
+DPH t.y, position, r1;
+DPH t.z, position, r2;
 
-MAD v.xyz, anim[a0.x+3].w, v2, v;
+SGE r0, w.z, c4.y;
+MAD v.xyz, r0, t, v;
 
 MOV v.w, c4.w;
 ######################################################################

@@ -12,6 +12,13 @@ static void vadd (float *res, float *v1, float *v2)
     res[2] = v1[2] + v2[2];
 }
 
+static void vsub (float *res, float *v1, float *v2)
+{
+    res[0] = v1[0] - v2[0];
+    res[1] = v1[1] - v2[1];
+    res[2] = v1[2] - v2[2];
+}
+
 static void qconjugate (float *res, float *q)
 {
     vneg (res, q);
@@ -127,13 +134,6 @@ static void vcopy (float *res, float *v)
     *res++ = *v++;
     *res++ = *v++;
 }
-
-static void vsub (float *res, float *v1, float *v2)
-{
-    res[0] = v1[0] - v2[0];
-    res[1] = v1[1] - v2[1];
-    res[2] = v1[2] - v2[2];
-}
 #endif
 
 #else
@@ -172,6 +172,5 @@ static void q2matrixt (float *mat, float *q, float *v)
     mat[3] = v[0];
     mat[7] = v[1];
     mat[11] = v[2];
-    mat[15] = 1.0;
 }
 #endif

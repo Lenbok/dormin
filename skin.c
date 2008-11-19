@@ -52,19 +52,18 @@ struct skin {
 } A16;
 
 struct bone {
-    int parent;
-
     float v[4] A16;
-    float q[4] A16;
+    float q[4];
 
-    float mv[4] A16;
+    float mv[4];
     float mq[4];
 
     float aq[4];
     float amq[4];
     float amv[4];
 
-    float cm[16] A16;
+    float cm[16];
+    int parent;
 } A16;
 
 typedef struct {
@@ -291,7 +290,7 @@ static void translate (State *s, float *vdst, float *ndst)
         nz = vec_splat (ns, 2);
 
         for (j = 0; j < skin->num_bones; ++j) {
-            vector float vw, v1, x, y, z, t0, t1, t2;
+            vector float vw, x, y, z, t0, t1, t2;
 
             b = &s->bones[skin->boneindices[j]];
 
@@ -302,11 +301,9 @@ static void translate (State *s, float *vdst, float *ndst)
             r2 = vec_ld (32, b->cm);
             r3 = vec_ld (48, b->cm);
 
-            v1 = vec_sub (vs, vec_ld (0, b->mv));
-
-            x = vec_splat (v1, 0);
-            y = vec_splat (v1, 1);
-            z = vec_splat (v1, 2);
+            x = vec_splat (vs, 0);
+            y = vec_splat (vs, 1);
+            z = vec_splat (vs, 2);
 
             t0 = vec_madd (r0, x, r3);
             t1 = vec_madd (r1, y, t0);
@@ -326,12 +323,9 @@ static void translate (State *s, float *vdst, float *ndst)
              vsrc += 3, nsrc += 3, vdst += 3, ndst += 3, ++skin)
     {
         if (skin->num_bones == 1) {
-            float v0[4];
-
             b = &s->bones[skin->boneindices[0]];
 
-            vsub (v0, vsrc, b->mv);
-            mapply_to_point (vdst, b->cm, v0);
+            mapply_to_point (vdst, b->cm, vsrc);
             mapply_to_vector (ndst, b->cm, nsrc);
         }
         else
@@ -344,9 +338,8 @@ static void translate (State *s, float *vdst, float *ndst)
                 b = &s->bones[skin->boneindices[j]];
 
                 if (w < 0.0) z = 1;
-                vsub (v0, vsrc, b->mv);
 
-                mapply_to_point (v1, b->cm, v0);
+                mapply_to_point (v1, b->cm, vsrc);
                 v1[0] *= w;
                 v1[1] *= w;
                 v1[2] *= w;
@@ -447,7 +440,7 @@ CAMLprim value ml_skin_set_anim (value anim_v)
 
     b = s->bones + 1;
     for (i = 0; i < s->num_bones; ++i, ++b) {
-        float v[3], q[4], q1[4];
+        float v[4], v1[4], q[4], q1[4];
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->amq, b->v);
@@ -456,7 +449,10 @@ CAMLprim value ml_skin_set_anim (value anim_v)
 
         qconjugate (q1, b->mq);
         qcompose (q, q1, b->amq);
-        q2matrixt (b->cm, q, b->amv);
+
+        qapply (v, q, b->mv);
+        vsub (v1, b->amv, v);
+        q2matrixt (b->cm, q, v1);
     }
 
     CAMLreturn (Val_unit);
