@@ -10,7 +10,7 @@ ATTRIB color    = vertex.attrib[3];
 ATTRIB weights  = vertex.attrib[6];
 ATTRIB texcoord = vertex.attrib[8];
 
-TEMP v, t, w, r0, r1, r2;
+TEMP v, t, w, s;
 ADDRESS a0;
 
 #######################################################################
@@ -18,41 +18,32 @@ FRC w, weights;
 
 ARL a0.x, weights.x;
 
-MUL r0, anim[a0.x+0], w.x;
-MUL r1, anim[a0.x+1], w.x;
-MUL r2, anim[a0.x+2], w.x;
-
-DPH v.x, position, r0;
-DPH v.y, position, r1;
-DPH v.z, position, r2;
+DPH v.x, position, anim[a0.x+0];
+DPH v.y, position, anim[a0.x+1];
+DPH v.z, position, anim[a0.x+2];
+MUL v, v, w.x;
 
 ##############################
 ARL a0.x, weights.y;
 
-MUL r0, anim[a0.x+0], w.y;
-MUL r1, anim[a0.x+1], w.y;
-MUL r2, anim[a0.x+2], w.y;
+DPH t.x, position, anim[a0.x+0];
+DPH t.y, position, anim[a0.x+1];
+DPH t.z, position, anim[a0.x+2];
 
-DPH t.x, position, r0;
-DPH t.y, position, r1;
-DPH t.z, position, r2;
-
-SGE r0, w.y, c4.y;
-MAD v.xyz, r0, t, v;
+SGE s, w.y, c4.y;
+MUL s, s, w.y;
+MAD v.xyz, t, s, v;
 
 ##############################
 ARL a0.x, weights.z;
 
-MUL r0, anim[a0.x+0], w.z;
-MUL r1, anim[a0.x+1], w.z;
-MUL r2, anim[a0.x+2], w.z;
+DPH t.x, position, anim[a0.x+0];
+DPH t.y, position, anim[a0.x+1];
+DPH t.z, position, anim[a0.x+2];
 
-DPH t.x, position, r0;
-DPH t.y, position, r1;
-DPH t.z, position, r2;
-
-SGE r0, w.z, c4.y;
-MAD v.xyz, r0, t, v;
+SGE s, w.z, c4.y;
+MUL s, s, w.z;
+MAD v.xyz, t, s, v;
 
 MOV v.w, c4.w;
 ######################################################################
