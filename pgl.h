@@ -22,6 +22,7 @@ typedef ptrdiff_t GLsizeiptr;
 typedef void (APIENTRYP PFNGLBINDBUFFERPROC) (GLenum target, GLuint buffer);
 typedef void (APIENTRYP PFNGLGENBUFFERSPROC) (GLsizei n, GLuint *buffers);
 typedef void (APIENTRYP PFNGLBUFFERDATAPROC) (GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage);
+typedef void (APIENTRYP PFNGLBUFFERSUBDATAPROC) (GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid *data);
 typedef GLvoid* (APIENTRYP PFNGLMAPBUFFERPROC) (GLenum target, GLenum access);
 typedef GLboolean (APIENTRYP PFNGLUNMAPBUFFERPROC) (GLenum target);
 static PFNGLBINDBUFFERPROC glBindBuffer;
@@ -29,6 +30,7 @@ static PFNGLGENBUFFERSPROC glGenBuffers;
 static PFNGLBUFFERDATAPROC glBufferData;
 static PFNGLMAPBUFFERPROC glMapBuffer;
 static PFNGLUNMAPBUFFERPROC glUnmapBuffer;
+static PFNGLBUFFERSUBDATAPROC glBufferSubData;
 #endif
 
 #ifndef GL_ARB_vertex_program

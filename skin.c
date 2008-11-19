@@ -38,21 +38,18 @@ enum {V_IDX, N_IDX, UV_IDX, C_IDX, COUNT};
 
 #endif
 
-const int usage[COUNT] = {GL_DYNAMIC_DRAW, GL_DYNAMIC_DRAW,
-                          GL_STATIC_DRAW, GL_STATIC_DRAW};
-
 struct skin {
-    int boneindices[3];
 #ifdef USE_ALTIVEC
-    float weights[12] A16;
+    float weights[12];
 #else
     float weights[3];
 #endif
+    int boneindices[3];
     int num_bones;
 } A16;
 
 struct bone {
-    float v[4] A16;
+    float v[4];
     float q[4];
 
     float mv[4];
@@ -69,8 +66,8 @@ struct bone {
 typedef struct {
     int num_bones;
     int num_vertices;
-    GLuint bufid[COUNT];
-    void *ptrs[COUNT];
+    GLuint bufid[2];
+    void *ptrs[2];
     void *bufs[COUNT];
     struct skin *skin;
     struct bone *bones;
@@ -81,19 +78,19 @@ static int use_vbo;
 
 static void copy_vertices (float *p, int num_vertices, value a_v)
 {
-    int i, j, k;
+    int i, k;
 
-    for (i = 0, j = 0, k = 0; i < num_vertices; ++i) {
-        p[j++] = Double_field (a_v, k++);
-        p[j++] = Double_field (a_v, k++);
-        p[j++] = Double_field (a_v, k++);
+    for (i = 0, k = 0; i < num_vertices; ++i, p += V_ELEMS) {
+        p[0] = Double_field (a_v, k++);
+        p[1] = Double_field (a_v, k++);
+        p[2] = Double_field (a_v, k++);
 #ifdef USE_ALTIVEC
-        p[j++] = 1.0;
+        p[3] = 1.0;
 #endif
     }
 }
 
-static void set_geom (State *s, value vertexa_v, value normala_v,
+static void set_geom (State *s, void **ptrs, value vertexa_v, value normala_v,
                       value uva_v, value skin_v, value colors_v)
 {
     int i;
@@ -103,13 +100,13 @@ static void set_geom (State *s, value vertexa_v, value normala_v,
 
     num_vertices = Wosize_val (vertexa_v) / (Double_wosize * 3);
 
-    copy_vertices (s->ptrs[V_IDX], num_vertices, vertexa_v);
-    copy_vertices (s->ptrs[N_IDX], num_vertices, normala_v);
+    copy_vertices (ptrs[V_IDX], num_vertices, vertexa_v);
+    copy_vertices (ptrs[N_IDX], num_vertices, normala_v);
 
-    for (i = 0, p = s->ptrs[UV_IDX]; i < num_vertices * 2; ++i) {
+    for (i = 0, p = ptrs[UV_IDX]; i < num_vertices * 2; ++i) {
         p[i] = Double_field (uva_v, i);
     }
-    memcpy (s->ptrs[C_IDX], String_val (colors_v), num_vertices * 4);
+    memcpy (ptrs[C_IDX], String_val (colors_v), num_vertices * 4);
 
     skin = s->skin;
     for (i = 0; i < num_vertices; ++i) {
@@ -141,52 +138,55 @@ static void set_geom (State *s, value vertexa_v, value normala_v,
 static void skin_init (State *s, value vertexa_v, value normala_v,
                        value uva_v, value skin_v, value colors_v)
 {
-    int i;
     char *p;
-    GLsizei size;
-    int sizes[COUNT], offsets[COUNT];
+    GLsizei sizevn, sizev, sizeu, sizec;
+    void *ptrs[COUNT];
 
     s->num_vertices = Wosize_val (vertexa_v) / (Double_wosize * 3);
 
-    sizes[V_IDX] = V_ELEMS * sizeof (GLfloat);
-    sizes[N_IDX] = V_ELEMS * sizeof (GLfloat);
-    sizes[UV_IDX] = 2 * sizeof (GLfloat);
-    sizes[C_IDX] = 4;
+    sizev = V_ELEMS * sizeof (GLfloat) * s->num_vertices;
+    sizeu = 2 * sizeof (GLfloat) * s->num_vertices;
+    sizec = 4 * s->num_vertices;
 
-    for (i = 0, size = 0; i < COUNT; ++i) {
-        offsets[i] = size;
-        sizes[i] *= s->num_vertices;
-        size += sizes[i];
-    }
+    sizevn = sizev * 2;
 
-    p = simd_alloc (AL16 (size) + s->num_vertices * sizeof (struct skin));
-    s->skin = (struct skin *) (p + AL16 (size));
+    p = simd_alloc (AL16 (sizevn) + s->num_vertices * sizeof (struct skin));
+    s->skin = (struct skin *) (p + AL16 (sizevn));
+    s->ptrs[0] = ptrs[V_IDX] = p;
+    ptrs[N_IDX] = p + sizev;
 
-    for (i = 0; i < COUNT; ++i) s->ptrs[i] = p + offsets[i];
+    p = stat_alloc (sizec + sizeu);
+    s->ptrs[1] = ptrs[UV_IDX] = p;
+    ptrs[C_IDX] = p + sizeu;
 
-    set_geom (s, vertexa_v, normala_v, uva_v, skin_v, colors_v);
+    set_geom (s, ptrs, vertexa_v, normala_v, uva_v, skin_v, colors_v);
 
     if (use_vbo) {
-        glGenBuffers (COUNT, s->bufid);
+        glGenBuffers (2, s->bufid);
 
-        for (i = 0; i < COUNT; ++i) {
-            glBindBuffer (GL_ARRAY_BUFFER, s->bufid[i]);
-            glBufferData (GL_ARRAY_BUFFER, sizes[i], NULL, usage[i]);
-            glBufferSubData (GL_ARRAY_BUFFER, 0, sizes[i], s->ptrs[i]);
-            s->bufs[i] = NULL;
-        }
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[0]);
+        glBufferData (GL_ARRAY_BUFFER, sizevn, s->ptrs[0], GL_DYNAMIC_DRAW);
+
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[1]);
+        glBufferData (GL_ARRAY_BUFFER, sizeu+sizec, s->ptrs[1], GL_STATIC_DRAW);
+
         glBindBuffer (GL_ARRAY_BUFFER, 0);
+        stat_free (s->ptrs[1]);
+
+        p = NULL;
+        s->bufs[V_IDX] = p;
+        s->bufs[N_IDX] = p + sizev;
+        s->bufs[UV_IDX] = p;
+        s->bufs[C_IDX] = p + sizeu;
     }
     else {
-        for (i = 0; i < COUNT; ++i) {
-            if (usage[i] == GL_STATIC_DRAW) {
-                s->bufs[i] = s->ptrs[i];
-            }
-            else {
-                s->bufs[i] = simd_alloc (sizes[i]);
-                memcpy (s->bufs[i], s->ptrs[i], sizes[i]);
-            }
-        }
+        p = simd_alloc (sizevn);
+        s->bufs[V_IDX] = p;
+        s->bufs[N_IDX] = p + sizev;
+        s->bufs[UV_IDX] = ptrs[UV_IDX];
+        s->bufs[C_IDX] = ptrs[C_IDX];
+
+        memcpy (p, s->ptrs[0], sizevn);
     }
 }
 
@@ -195,20 +195,18 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
     State *s = &glob_state;
 
     (void) unit_v;
+
     glEnableClientState (GL_VERTEX_ARRAY);
-    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-    glVertexPointer (3, GL_FLOAT, STRIDE, s->bufs[V_IDX]);
-
     glEnableClientState (GL_NORMAL_ARRAY);
-    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-    glNormalPointer (GL_FLOAT, STRIDE, s->bufs[N_IDX]);
-
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[UV_IDX]);
-    glTexCoordPointer (2, GL_FLOAT, 0, s->bufs[UV_IDX]);
-
     glEnableClientState (GL_COLOR_ARRAY);
-    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[C_IDX]);
+
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[0]);
+    glVertexPointer (3, GL_FLOAT, V_ELEMS * sizeof (GLfloat), s->bufs[V_IDX]);
+    glNormalPointer (GL_FLOAT, V_ELEMS * sizeof (GLfloat), s->bufs[N_IDX]);
+
+    if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, s->bufid[1]);
+    glTexCoordPointer (2, GL_FLOAT, 0, s->bufs[UV_IDX]);
     glColorPointer (4, GL_UNSIGNED_BYTE, 0, s->bufs[C_IDX]);
 
     return Val_unit;
@@ -237,6 +235,7 @@ CAMLprim value ml_skin_init (value use_vbo_v, value geom_v)
         GETPA (BindBuffer);
         GETPA (GenBuffers);
         GETPA (BufferData);
+        GETPA (BufferSubData);
         GETPA (MapBuffer);
         GETPA (UnmapBuffer);
     }
@@ -267,8 +266,8 @@ static void translate (State *s, float *vdst, float *ndst)
 {
     int i, j;
     struct bone *b;
-    float *vsrc = s->ptrs[V_IDX];
-    float *nsrc = s->ptrs[N_IDX];
+    float *vsrc = s->ptrs[0];
+    float *nsrc = vsrc + s->num_vertices * V_ELEMS;
     struct skin *skin = s->skin;
 
 #ifdef TIMING
@@ -462,48 +461,26 @@ CAMLprim value ml_skin_anim (value unit_v)
 {
     GLboolean ret;
     CAMLparam1 (unit_v);
-    float *vdst, *vsrc, *ndst, *nsrc;
+    float *vdst, *ndst;
     State *s = &glob_state;
 
     if (use_vbo) {
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
-        vdst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-        if (!vdst) {
-            fprintf (stderr, "glMapBuffer for vertices failed\n");
-            exit (EXIT_FAILURE);
-        }
+        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[0]);
+        vdst = ndst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        if (!vdst) caml_failwith ("glMapBuffer failed");
 
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-        ndst = glMapBuffer (GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-        if (!ndst) {
-            fprintf (stderr, "glMapBuffer for normals failed\n");
-            exit (EXIT_FAILURE);
-        }
+        ndst += (float *) s->bufs[N_IDX] - (float *) s->bufs[V_IDX];
     }
     else {
         vdst = s->bufs[V_IDX];
         ndst = s->bufs[N_IDX];
     }
 
-    vsrc = s->ptrs[V_IDX];
-    nsrc = s->ptrs[N_IDX];
-
     translate (s, vdst, ndst);
 
     if (use_vbo) {
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[V_IDX]);
         ret = glUnmapBuffer (GL_ARRAY_BUFFER);
-        if (ret == GL_FALSE) {
-            fprintf (stderr, "glUnmapBuffer for vertices failed\n");
-            exit (EXIT_FAILURE);
-        }
-
-        glBindBuffer (GL_ARRAY_BUFFER, s->bufid[N_IDX]);
-        ret = glUnmapBuffer (GL_ARRAY_BUFFER);
-        if (ret == GL_FALSE) {
-            fprintf (stderr, "glUnmapBuffer for normals failed\n");
-            exit (EXIT_FAILURE);
-        }
+        if (ret == GL_FALSE) caml_failwith ("glUnmapBuffer failed");
     }
 
     CAMLreturn (Val_unit);
