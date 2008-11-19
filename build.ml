@@ -30,7 +30,7 @@ let boc flags src =
     [Filename.concat srcdir c]
     (
       if src = "skin" || src = "skinvp"
-      then StrSet.add "progvp1.h"
+      then
         (StrSet.add (Filename.concat srcdir "pgl.h")
             (StrSet.singleton (Filename.concat srcdir "vec.c")))
       else StrSet.empty
