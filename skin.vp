@@ -1,6 +1,6 @@
 !!ARBvp1.0
 
-PARAM c4 = {4, 1e-8, 0, 1};
+PARAM c4 = {4, 0, 0, 1};
 PARAM mvp[4] = { state.matrix.mvp };
 PARAM anim[] = { program.local[0..121] };
 
@@ -30,9 +30,7 @@ DPH t.x, position, anim[a0.x+0];
 DPH t.y, position, anim[a0.x+1];
 DPH t.z, position, anim[a0.x+2];
 
-SGE s, w.y, c4.y;
-MUL s, s, w.y;
-MAD v.xyz, t, s, v;
+MAD v.xyz, t, w.y, v;
 
 ##############################
 ARL a0.x, weights.z;
@@ -41,9 +39,7 @@ DPH t.x, position, anim[a0.x+0];
 DPH t.y, position, anim[a0.x+1];
 DPH t.z, position, anim[a0.x+2];
 
-SGE s, w.z, c4.y;
-MUL s, s, w.z;
-MAD v.xyz, t, s, v;
+MAD v.xyz, t, w.z, v;
 
 MOV v.w, c4.w;
 ######################################################################
