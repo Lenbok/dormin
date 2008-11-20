@@ -297,6 +297,7 @@ let keyboard ~key ~x ~y =
   | 'e' -> view.roteye <- not view.roteye
   | 'o' -> view.sphere <- not view.sphere;
   | 'h' -> view.help <- not view.help
+  | 'p' -> Skin.set_text ()
   | 'a' ->
       if view.animated
       then (

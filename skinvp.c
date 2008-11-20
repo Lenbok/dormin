@@ -261,9 +261,9 @@ CAMLprim value ml_skin_draw_end_vp (value unit_v)
     return Val_unit;
 }
 
-CAMLprim value ml_skin_init_vp (value text_v, value use_vbo_v, value geom_v)
+CAMLprim value ml_skin_init_vp (value use_vbo_v, value geom_v)
 {
-    CAMLparam3 (use_vbo_v, text_v, geom_v);
+    CAMLparam2 (use_vbo_v, geom_v);
     CAMLlocal5 (vertexa_v, normala_v, uva_v, skin_v, colors_v);
     State *s = &glob_state;
 
@@ -289,8 +289,6 @@ CAMLprim value ml_skin_init_vp (value text_v, value use_vbo_v, value geom_v)
     colors_v  = Field (geom_v, 4);
 
     skin_init (s, vertexa_v, normala_v, uva_v, skin_v, colors_v, 1);
-    load_program (String_val (text_v), caml_string_length (text_v), 1);
-    skin_anim (s);
 
     CAMLreturn (Val_unit);
 }
@@ -391,6 +389,16 @@ CAMLprim value ml_skin_anim_vp (value unit_v)
     CAMLparam1 (unit_v);
     State *s = &glob_state;
 
+    skin_anim (s);
+    CAMLreturn (Val_unit);
+}
+
+CAMLprim value ml_skin_set_text_vp (value text_v)
+{
+    CAMLparam1 (text_v);
+    State *s = &glob_state;
+
+    load_program (String_val (text_v), caml_string_length (text_v), 1);
     skin_anim (s);
     CAMLreturn (Val_unit);
 }
