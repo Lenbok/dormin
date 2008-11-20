@@ -39,6 +39,10 @@ swizzling code: http://playstation2-linux.com/download/p2lsd/sparkys_swizzle_cod
 altivec code is based on:
    http://www.freevec.org/category/simd/algorithms/algebra/matrix_operations
 
+adpcm decoder is slightly modified:
+   PSX VAG-Packer, hacked by bITmASTER@bigfoot.com
+   with block interleave figured out by Antti Huovilainen
+
 Disorder handshakes
 -------------------
 Skal,   Unreal,    Ex, Coderipper,   dAS,   Action, Vastator,  pGeist,
