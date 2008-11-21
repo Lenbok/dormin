@@ -275,6 +275,7 @@ let reshape ~w ~h =
 let idle () =
   let deadline = view.last_time +. 0.04 in
   let currtime = Unix.gettimeofday () in
+  mapchar 'n';
   if deadline > currtime
   then
     let _ = Unix.select [] [] [] (deadline -. currtime) in
@@ -282,7 +283,6 @@ let idle () =
   else
     view.last_time <- view.last_time +. 0.04
   ;
-  mapchar 'n';
   Glut.postRedisplay ();
 ;;
 
