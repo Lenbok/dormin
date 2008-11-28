@@ -476,7 +476,7 @@ let obj geom =
     val colormaterial = false
 
     method help =
-      [onoff "t""textures" textures
+      [onoff "t" "textures" textures
       ;onoff "l" "lighting" lighting
       ;onoff "w" "wireframe" (not solid)
       ;onoff "c" "color material" colormaterial
@@ -509,7 +509,8 @@ let _ =
   let geom = r x sbuf in
   let minmax =
     let rec f ((minx, maxx, miny, maxy, minz, maxz) as minmax) i =
-      if i >= Array.length geom.vertexa then minmax
+      if i >= Array.length geom.vertexa
+      then minmax
       else
         let x = geom.vertexa.(i+0) in
         let y = geom.vertexa.(i+1) in
