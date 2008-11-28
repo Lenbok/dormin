@@ -329,14 +329,11 @@ static void translate (State *s, float *vdst, float *ndst)
         }
         else
         {
-            int z = 0;
             float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w;
 
             for (j = 0; j < skin->num_bones; ++j) {
                 w = skin->weights[j];
                 b = &s->bones[skin->boneindices[j]];
-
-                if (w < 0.0) z = 1;
 
                 mapply_to_point (v1, b->cm, vsrc);
                 v1[0] *= w;
@@ -352,9 +349,7 @@ static void translate (State *s, float *vdst, float *ndst)
                 vaddto (n, v0);
             }
 
-            /* hack hack */
-            if (z) vcopy (vdst, vsrc);
-            else vcopy (vdst, v);
+            vcopy (vdst, v);
             vcopy (ndst, n);
         }
     }
