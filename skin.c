@@ -321,37 +321,28 @@ static void translate (State *s, float *vdst, float *ndst)
     for (i = 0; i < s->num_vertices; ++i,
              vsrc += 3, nsrc += 3, vdst += 3, ndst += 3, ++skin)
     {
-        if (skin->num_bones == 1) {
-            b = &s->bones[skin->boneindices[0]];
+        float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w;
 
-            mapply_to_point (vdst, b->cm, vsrc);
-            mapply_to_vector (ndst, b->cm, nsrc);
+        for (j = 0; j < skin->num_bones; ++j) {
+            w = skin->weights[j];
+            b = &s->bones[skin->boneindices[j]];
+
+            mapply_to_point (v1, b->cm, vsrc);
+            v1[0] *= w;
+            v1[1] *= w;
+            v1[2] *= w;
+
+            mapply_to_vector (v0, b->cm, nsrc);
+            v0[0] *= w;
+            v0[1] *= w;
+            v0[2] *= w;
+
+            vaddto (v, v1);
+            vaddto (n, v0);
         }
-        else
-        {
-            float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w;
 
-            for (j = 0; j < skin->num_bones; ++j) {
-                w = skin->weights[j];
-                b = &s->bones[skin->boneindices[j]];
-
-                mapply_to_point (v1, b->cm, vsrc);
-                v1[0] *= w;
-                v1[1] *= w;
-                v1[2] *= w;
-
-                mapply_to_vector (v0, b->cm, nsrc);
-                v0[0] *= w;
-                v0[1] *= w;
-                v0[2] *= w;
-
-                vaddto (v, v1);
-                vaddto (n, v0);
-            }
-
-            vcopy (vdst, v);
-            vcopy (ndst, n);
-        }
+        vcopy (vdst, v);
+        vcopy (ndst, n);
     }
 #endif
 
