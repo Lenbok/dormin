@@ -22,17 +22,48 @@ if ! md5sum --status -c $d; then
     mv $d.tmp $d
 fi
 
-cc="cc"
-ccopt="-O"
-test $(hostname) = "linmac" && {
-    cc="$HOME/x/dev/gcc-4.3.0/bin/gcc";
-    ccopt="-Wall -Werror -Wextra -O3 -mabi=altivec -maltivec -Wno-unused-function";
-    ccopt="$ccopt -fprefetch-loop-arrays -mtune=power6 -mcpu=G4 -funroll-all-loops"
-    ccopt="$ccopt -ftree-loop-linear -ftree-vectorize"
-    ccopt="$ccopt --param l1-cache-line-size=32"
-    ccopt="$ccopt -DUSE_ALTIVEC -DG4"
+altivec=true
+
+case $(hostname) in
+    laptop)
+    cc="gcc-4.3.0"
+    ccopt="-Wall -Werror -Wextra -Wno-unused-function"
+    ccopt="$ccopt -O3 -march=athlon64 -mtune=athlon64 -fprefetch-loop-arrays"
     ccopt="$ccopt -DTIMING"
-}
+    ;;
+
+    linmac)
+    cc="$HOME/x/dev/gcc-4.3.0/bin/gcc";
+    ccopt="-Wall -Werror -Wextra -O3 -Wno-unused-function";
+    ccopt="$ccopt -DTIMING"
+    if $altivec; then
+        ccopt="$ccopt -fprefetch-loop-arrays -mtune=power6 -mcpu=G4"
+        ccopt="$ccopt -DG4 -DUSE_ALTIVEC"
+        ccopt="$ccopt --param l1-cache-line-size=32"
+    else
+        ccopt="$ccopt -fprefetch-loop-arrays -mtune=power6 -mcpu=G4 -funroll-all-loops"
+        ccopt="$ccopt -ftree-loop-linear -ftree-vectorize"
+    fi
+    ;;
+
+    ps3)
+    cc="gcc-4.3.1 -m32";
+    ccopt="-Wall -Werror -Wextra -O3 -Wno-unused-function";
+    ccopt="$ccopt -fprefetch-loop-arrays -mtune=power6 -mcpu=cell"
+    ccopt="$ccopt --param l1-cache-line-size=128"
+    ccopt="$ccopt -DTIMING"
+    if $altivec; then
+        ccopt="$ccopt -DUSE_ALTIVEC"
+    else
+        ccopt="$ccopt -ftree-loop-linear -ftree-vectorize"
+    fi
+    ;;
+
+    *)
+    cc=cc
+    ccopt=-O2
+    ;;
+esac
 
 targets="dormin"
-./b -O src:$h -r -O ccopt:"$ccopt" -O cc:$cc $* $targets
+./b -O src:$h -r -O ccopt:"$ccopt" -O cc:"$cc" $* $targets

@@ -24,7 +24,7 @@ let boc flags src =
   let c = src ^ ".c" in
   ocaml
     "ocamlc.opt"
-    ("-cc " ^ cc ^ " -ccopt '" ^ flags ^ " " ^ ccopt ^ " -o " ^ o ^ "'")
+    ("-cc '" ^ cc ^ "' -ccopt '" ^ flags ^ " " ^ ccopt ^ " -o " ^ o ^ "'")
     o
     (StrSet.singleton o)
     [Filename.concat srcdir c]
