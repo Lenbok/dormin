@@ -90,25 +90,28 @@ static void q2matrixt (float *mat, float *q, float *v)
     mat[10] = 1 - 2 * ( xx + yy );
 
 #ifdef USE_ALTIVEC
-    mat[12] = v[0];
-    mat[13] = v[1];
-    mat[14] = v[2];
+#define MAT_V0 12
+#define MAT_V1 13
+#define MAT_V2 14
 #else
-    mat[3] = v[0];
-    mat[7] = v[1];
-    mat[11] = v[2];
+#define MAT_V0 3
+#define MAT_V1 7
+#define MAT_V2 11
 #endif
+
+    mat[MAT_V0] = v[0];
+    mat[MAT_V1] = v[1];
+    mat[MAT_V2] = v[2];
 }
 
-#ifndef USE_ALTIVEC
 static void mapply_to_point (float *res, float *m, float *v)
 {
     float x = v[0];
     float y = v[1];
     float z = v[2];
-    res[0] = x*m[0] + y*m[4] + z*m[8] + m[3];
-    res[1] = x*m[1] + y*m[5] + z*m[9] + m[7];
-    res[2] = x*m[2] + y*m[6] + z*m[10] + m[11];
+    res[0] = x*m[0] + y*m[4] + z*m[8] + m[MAT_V0];
+    res[1] = x*m[1] + y*m[5] + z*m[9] + m[MAT_V1];
+    res[2] = x*m[2] + y*m[6] + z*m[10] + m[MAT_V2];
 }
 
 static void mapply_to_vector (float *res, float *m, float *v)
@@ -134,7 +137,6 @@ static void vcopy (float *res, float *v)
     *res++ = *v++;
     *res++ = *v++;
 }
-#endif
 
 #else
 

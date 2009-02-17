@@ -29,7 +29,8 @@ test $(hostname) = "linmac" && {
     ccopt="-Wall -Werror -Wextra -O3 -mabi=altivec -maltivec -Wno-unused-function";
     ccopt="$ccopt -fprefetch-loop-arrays -mtune=power6 -mcpu=G4 -funroll-all-loops"
     ccopt="$ccopt -ftree-loop-linear -ftree-vectorize"
-#    ccopt="$ccopt -DUSE_ALTIVEC"
+    ccopt="$ccopt --param l1-cache-line-size=32"
+    ccopt="$ccopt -DUSE_ALTIVEC -DG4"
     ccopt="$ccopt -DTIMING"
 }
 
