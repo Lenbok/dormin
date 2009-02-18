@@ -309,7 +309,8 @@ static void translate (State *s, float *vdst, float *ndst)
     int i, j;
     struct bone *b;
     float *vsrc = s->ptrs[0];
-    float *nsrc = vsrc + AL16 (s->num_vertices * 3);
+    float *nsrc =
+        (float *) ((char *) vsrc + AL32 (s->num_vertices * 3 * sizeof (GLfloat)));
     struct skin *skin = s->skin;
 
 #ifdef TIMING
