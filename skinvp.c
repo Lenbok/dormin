@@ -201,15 +201,16 @@ static void skin_anim (State *s)
 
 static void load_program (const char *text, GLsizei size, GLuint progid)
 {
+    GLint pos;
+
     glBindProgramARB (GL_VERTEX_PROGRAM_ARB, progid);
 
     glProgramStringARB (GL_VERTEX_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB,
                         size, (const GLubyte *) text);
-    if (glGetError () != GL_NO_ERROR) {
-        GLint pos;
+    glGetIntegerv(GL_PROGRAM_ERROR_POSITION_ARB, &pos);
+    if (pos != -1) {
         char buf[1024];
 
-        glGetIntegerv (GL_PROGRAM_ERROR_POSITION_ARB, &pos);
         snprintf (buf, 1024, "glProgramStringARB: error %s at %d",
                   (char *) glGetString (GL_PROGRAM_ERROR_STRING_ARB), pos);
         caml_failwith (buf);
