@@ -38,8 +38,7 @@ enum {V_IDX, N_IDX, UV_IDX, C_IDX, COUNT};
 
 struct skin {
     float weights[3];
-    int boneindices[3];
-    int num_bones;
+    int boneinfo;
 } A16;
 
 struct bone {
@@ -105,17 +104,18 @@ static void set_geom (State *s, void **ptrs, value vertexa_v, value normala_v,
         value v;
 
         v = Field (skin_v, i);
-        skin[i].num_bones = Int_val (Field (v, 3));
+        skin[i].boneinfo = Int_val (Field (v, 3));
 
-        for (j = 0; j < skin[i].num_bones; ++j) {
-            double val, w;
+        for (j = 0; j < Int_val (Field (v, 3)); ++j) {
+            double val;
+            int boneindex;
+            const int shifts[] = {2,12,22};
 
             val = Double_val (Bp_val (Field (v, j)));
 
-            skin[i].boneindices[j] = (int) val;
-            w = val - skin[i].boneindices[j];
-            skin[i].weights[j] = w;
-            skin[i].boneindices[j] += 1;
+            boneindex = (int) val;
+            skin[i].weights[j] = val - boneindex;
+            skin[i].boneinfo |= (boneindex + 1) << shifts[j];
         }
     }
 }
@@ -262,6 +262,8 @@ static vector float appbones (State *s,
                               vector float *np)
 {
     int j;
+    int num_bones;
+    int bone_index;
     struct bone *b;
     vector float vz = (vector float) vec_splat_u32 (0);
     vector float v, w, n;
@@ -270,11 +272,13 @@ static vector float appbones (State *s,
     v = n = vz;
     w = vec_ld (0, skin->weights);
 
-    j = skin->num_bones;
-    for (j = 0; j < skin->num_bones; ++j) {
+    num_bones = skin->boneinfo & 3;
+    bone_index = skin->boneinfo >> 2;
+    for (j = 0; j < num_bones; ++j) {
         vector float t0, t1, t2, t3, t4, t5, r0, r1, r2, r3, vw;
 
-        b = &s->bones[skin->boneindices[j]];
+        b = &s->bones[bone_index & 0x3ff];
+        bone_index >>= 10;
         vw = vec_splat (w, 0);
         w = vec_slo (w, S);
 
@@ -429,11 +433,15 @@ static void translate (State *s, float *vdst, float *ndst)
     for (; i < s->num_vertices; ++i, vsrc += 3, nsrc += 3, vdst += 3, ndst += 3,
              ++skin)
     {
+        int num_bones, bone_index;
         float v[3] = {0,0,0}, n[3] = {0,0,0}, v0[4], v1[4], w;
 
-        for (j = 0; j < skin->num_bones; ++j) {
+        num_bones = skin->boneinfo & 3;
+        bone_index = skin->boneinfo >> 2;
+        for (j = 0; j < num_bones; ++j) {
             w = skin->weights[j];
-            b = &s->bones[skin->boneindices[j]];
+            b = &s->bones[bone_index & 0x3ff];
+            bone_index >>= 10;
 
             mapply_to_point (v1, b->cm, vsrc);
             v1[0] *= w;
