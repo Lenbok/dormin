@@ -296,7 +296,6 @@ static vector float appbones (State *s,
         t4 = vec_madd (r1, ny, t3);
         t5 = vec_madd (r2, nz, t4);
         n = vec_madd (t5, vw, n);
-
     }
 
     *np = n;
