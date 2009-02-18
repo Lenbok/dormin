@@ -289,7 +289,7 @@ static vector float appbones (State *s,
         v = vec_madd (t2, vw, v);
 
         t3 = vec_madd (r0, nx, vz);
-        t4 = vec_madd (r1, ny, t0);
+        t4 = vec_madd (r1, ny, t3);
         t5 = vec_madd (r2, nz, t4);
         n = vec_madd (t5, vw, n);
 
@@ -305,7 +305,7 @@ static void translate (State *s, float *vdst, float *ndst)
     int i, j;
     struct bone *b;
     float *vsrc = s->ptrs[0];
-    float *nsrc = vsrc + ALNN (32, s->num_vertices * 3);
+    float *nsrc = vsrc + AL16 (s->num_vertices * 3);
     struct skin *skin = s->skin;
 
 #ifdef TIMING
