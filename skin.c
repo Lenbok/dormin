@@ -29,11 +29,13 @@ enum {V_IDX, N_IDX, UV_IDX, C_IDX, COUNT};
 #define A16 __attribute__ ((aligned (16)))
 #define AL16(i) ALNN (16, i)
 #define AL32(i) ALNN (32, i)
+#define CM_ELEMS 16
 #else
 #define simd_alloc(b, s) malloc (s)
 #define A16
 #define AL16(i) (i)
 #define AL32(i) (i)
+#define CM_ELEMS 12
 #endif
 
 struct skin {
@@ -54,6 +56,10 @@ struct bone {
 
     float cm[16];
     int parent;
+};
+
+struct abone {
+    float cm[CM_ELEMS];
 } A16;
 
 typedef struct {
@@ -64,6 +70,7 @@ typedef struct {
     void *bufs[COUNT];
     struct skin *skin;
     struct bone *bones;
+    struct abone *abones;
 } State;
 
 static State glob_state;
@@ -173,6 +180,7 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
 
         memcpy (p, s->ptrs[0], sizevn);
     }
+    s->num_vertices /= 1;
 }
 
 CAMLprim value ml_skin_draw_begin (value unit_v)
@@ -264,7 +272,7 @@ static vector float appbones (State *s,
     int j;
     int num_bones;
     int bone_index;
-    struct bone *b;
+    struct abone *b;
     vector float vz = (vector float) vec_splat_u32 (0);
     vector float v, w, n;
     vector unsigned char S = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4<<3};
@@ -277,7 +285,7 @@ static vector float appbones (State *s,
     for (j = 0; j < num_bones; ++j) {
         vector float t0, t1, t2, t3, t4, t5, r0, r1, r2, r3, vw;
 
-        b = &s->bones[bone_index & 0x3ff];
+        b = &s->abones[bone_index & 0x3ff];
         bone_index >>= 10;
         vw = vec_splat (w, 0);
         w = vec_slo (w, S);
@@ -306,7 +314,7 @@ static vector float appbones (State *s,
 static void translate (State *s, float *vdst, float *ndst)
 {
     int i, j;
-    struct bone *b;
+    struct abone *b;
     float *vsrc = s->ptrs[0];
     float *nsrc =
         (float *) ((char *) vsrc + AL32 (s->num_vertices * 3 * sizeof (GLfloat)));
@@ -440,7 +448,7 @@ static void translate (State *s, float *vdst, float *ndst)
         bone_index = skin->boneinfo >> 2;
         for (j = 0; j < num_bones; ++j) {
             w = skin->weights[j];
-            b = &s->bones[bone_index & 0x3ff];
+            b = &s->abones[bone_index & 0x3ff];
             bone_index >>= 10;
 
             mapply_to_point (v1, b->cm, vsrc);
@@ -472,13 +480,15 @@ CAMLprim value ml_skin_set_skel (value skel_v)
     int i;
     size_t size;
     struct bone *b;
+    struct abone *ab;
     CAMLparam1 (skel_v);
     CAMLlocal2 (v, floats_v);
     State *s = &glob_state;
 
     s->num_bones = Wosize_val (skel_v);
-    size = (s->num_bones + 1) * sizeof (struct bone);
+    size = (s->num_bones + 1) * sizeof (*b);
     s->bones = b = simd_alloc (16, size);
+    s->abones = ab = simd_alloc (16, (s->num_bones + 1) * sizeof (*ab));
 
     memset (b, 0, size);
     b->parent = -1;
@@ -505,18 +515,14 @@ CAMLprim value ml_skin_set_skel (value skel_v)
     }
 
     b = s->bones + 1;
-    for (i = 0; i < s->num_bones; ++i, ++b) {
+    ab = s->abones + 1;
+    for (i = 0; i < s->num_bones; ++i, ++b, ++ab) {
         float v[3];
         struct bone *parent = &s->bones[b->parent];
 
         qapply (v, parent->mq, b->v);
         qcompose (b->mq, b->q, parent->mq);
         vadd (b->mv, v, parent->mv);
-#ifdef USE_ALTIVEC
-        b->cm[3] = b->mv[0];
-        b->cm[7] = b->mv[1];
-        b->cm[11] = b->mv[2];
-#endif
     }
 
     CAMLreturn (Val_unit);
@@ -529,6 +535,7 @@ CAMLprim value ml_skin_set_anim (value anim_v)
     CAMLlocal1 (floats_v);
     State *s = &glob_state;
     struct bone *b = s->bones + 1;
+    struct abone *ab = s->abones + 1;
 
     for (i = 0; i < s->num_bones; ++i, ++b) {
         floats_v = Field (anim_v, i);
@@ -539,7 +546,7 @@ CAMLprim value ml_skin_set_anim (value anim_v)
     }
 
     b = s->bones + 1;
-    for (i = 0; i < s->num_bones; ++i, ++b) {
+    for (i = 0; i < s->num_bones; ++i, ++b, ++ab) {
         float v[4], v1[4], q[4], q1[4];
         struct bone *parent = &s->bones[b->parent];
 
@@ -552,7 +559,7 @@ CAMLprim value ml_skin_set_anim (value anim_v)
 
         qapply (v, q, b->mv);
         vsub (v1, b->amv, v);
-        q2matrixt (b->cm, q, v1);
+        q2matrixt (ab->cm, q, v1);
     }
 
     CAMLreturn (Val_unit);
