@@ -28,7 +28,7 @@ When flag is 3,4,5,6:
 
  For last(4th) pair:
    first pair member is in [-0.018651, 0.016117]
-   second                  [ 0.000000, 0.044226]
+   second                  [ 0.000000, 0.044226] (yamori_B_rise.anb)
 
  Depending on the flag the value from 32bit array[M] is broken down
  like this:
@@ -42,16 +42,16 @@ When flag is 3,4,5,6:
    float i, j, k, s;
    switch (flag) {
    case 3:
-     j = madd(J / 256.0, pairs[0].first, pairs[0].second);
-     k = madd(K / 256.0, pairs[1].first, pairs[1].second);
-     s = madd(S / 256.0, pairs[2].first, pairs[2].second);
+     j = (J / 256.0)*pairs[0].second + pairs[0].first;
+     k = (K / 256.0)*pairs[1].second + pairs[1].first;
+     s = (S / 256.0)*pairs[2].second + pairs[2].first;
      i = sqrt(1 - magnitude(j, k, s));
      if (I & 16) i = -i;
      break;
    case 4:
-     i = madd(I / 256.0, pairs[0].first, pairs[0].second);
-     k = madd(K / 256.0, pairs[1].first, pairs[1].second);
-     s = madd(S / 256.0, pairs[2].first, pairs[2].second);
+     i = (I / 256.0)*pairs[0].second + pairs[0].first;
+     k = (K / 256.0)*pairs[1].second + pairs[1].first;
+     s = (S / 256.0)*pairs[2].second + pairs[2].first;
      j = sqrt(1 - magnitude(i, k, s));
      if (J & 16) j = -j;
      break;
@@ -75,9 +75,9 @@ When flag is 12:
  Each 48 bit value is a tuple of 3 signed 16 bit fields (I,J,K),
  quaternion is obtained like this:
 
- i = madd(I / 32768.0, pairs[0].first, pairs[0].second);
- j = madd(J / 32768.0, pairs[1].first, pairs[1].second);
- k = madd(K / 32768.0, pairs[2].first, pairs[2].second);
+ i = (I / 32768.0)*pairs[0].second + pairs[0].first;
+ j = (J / 32768.0)*pairs[1].second + pairs[1].first;
+ k = (K / 32768.0)*pairs[2].second + pairs[2].first;
  s = sqrt(1 - magnitude (i, j, k));
  if (I & 1) s = -s;
  quat q = (i, j, k, s) 
@@ -93,5 +93,5 @@ When flag is 13:
   [2..4] - axis
 
  From these one can obtain quaternion like this:
-  float radians = madd(16bitint / 32768.0, float[1], float[0])
+  float radians = (16bitint / 32768.0)*float[1] + float[0];
   quat q = from_axis_angle(axis, radians);
