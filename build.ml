@@ -40,7 +40,7 @@ let boc flags src =
 
 let bso name objs =
   let so = name ^ ".so" in
-  let so = Filename.concat (Sys.getcwd ()) so in
+  (* let so = Filename.concat (Sys.getcwd ()) so in *)
   let o = List.map (fun s -> s ^ ".o") objs in
   ocaml
     cc
@@ -56,7 +56,8 @@ let bso name objs =
 let _ =
   List.iter (fun src ->
     cmopp ~flags:"-g -I +lablGL -thread" ~dirname:srcdir src)
-    ["xff"; "nto"; "nmo"; "slice"; "rend"; "vec"; "skb"; "qtr"; "anb"; "skin"]
+    ["xff"; "nto"; "nmo"; "slice"; "rend"; "vec"; "skb"; "qtr"; "anb"
+    ;"skin"; "imgv"]
   ;
   boc "-g" "swizzle";
   boc "-g" "skin";
@@ -66,7 +67,7 @@ let _ =
   let prog name cmos =
     ocaml
       "ocamlc.opt"
-      ("-g -I +lablGL lablgl.cma lablglut.cma unix.cma")
+      ("-g -I +lablGL lablgl.cma lablglut.cma unix.cma -dllpath " ^ Sys.getcwd ())
       name
       (StrSet.singleton name)
       (State.dep_sort cmos)
@@ -75,6 +76,7 @@ let _ =
   prog "dormin" ["slice.cmo"; "xff.cmo"; "nto.cmo"; "skin.cmo"; "rend.cmo";
                  "vec.cmo"; "anb.cmo"; "skb.cmo"; "nmo.cmo"; "qtr.cmo";
                  so; so1];
+  prog "imgv" ["slice.cmo"; "xff.cmo"; "nto.cmo"; "imgv.cmo"; so; so1];
   ()
 ;;
 
