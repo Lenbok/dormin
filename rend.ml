@@ -4,13 +4,18 @@ class type draw = object
   method help: (string * string * string) list
 end;;
 
+type model =
+    { nmo : string option
+    ; skb : string option
+    ; anims : string list
+    ; root : string option
+    }
+
+let models = ref []
 let try_vbo = ref true
-let nmo_name = ref None
-let anb_names = ref []
-let skb_name = ref None
-let vp_name = ref ""
 let mipmaps = ref false
 let slerp_step = ref 1.0
+let dump_bones = ref false
 
 type view =
     { mutable w : int
@@ -326,10 +331,12 @@ let keyboard ~key ~x ~y =
 
 let special ~key ~x ~y =
   begin match key with
-  | Glut.KEY_LEFT  -> view.rotz <- view.rotz +. view.aincr
-  | Glut.KEY_RIGHT -> view.rotz <- view.rotz -. view.aincr
-  | Glut.KEY_UP    -> view.rotx <- view.rotx -. view.aincr
-  | Glut.KEY_DOWN  -> view.rotx <- view.rotx +. view.aincr
+  | Glut.KEY_LEFT      -> view.rotz <- view.rotz +. view.aincr
+  | Glut.KEY_RIGHT     -> view.rotz <- view.rotz -. view.aincr
+  | Glut.KEY_UP        -> view.rotx <- view.rotx -. view.aincr
+  | Glut.KEY_DOWN      -> view.rotx <- view.rotx +. view.aincr
+  | Glut.KEY_PAGE_UP   -> mapchar '\001'
+  | Glut.KEY_PAGE_DOWN -> mapchar '\002'
   | _ -> ()
   end;
   setup view.w view.h;
@@ -419,23 +426,30 @@ let _ =
   Gl.enable `depth_test;
   Gl.enable `alpha_test;
   let setsome r s = r := Some s in
+  let model = ref { nmo = None; skb = None; anims = []; root = None } in
   let spec =
     ["-slice", Arg.String Slice.openslice, "<path> of file/dir to slice data to"
     ;"-index", Arg.Set_string Xff.index_path, "<path> to index"
     ;"-base", Arg.String (setsome Xff.base_path), "<directory> base"
     ;"-sstep", Arg.Set_float slerp_step, "<float> slerp step"
+    ;"-dbones", Arg.Set dump_bones, " print names of the bones"
     ;"-novbo", Arg.Clear try_vbo, " do not use vertex buffer objects"
-    ;("-skb", Arg.String (setsome skb_name),
+    ;("-skb", Arg.String (fun s -> model := { !model with skb = Some s }),
      "<name> use specified skb instead of guessing")
     ;"-mipmaps", Arg.Set mipmaps, " use mipmaps"
-    ;"-vp", Arg.Set_string vp_name, "<path> vertex program"
+    ;("-connect", Arg.String
+      (fun s ->
+        if !model.nmo = None then failwith "Previous model has no name";
+        models := !model :: !models;
+        model := { nmo = None; skb = None; anims = []; root = Some s }),
+     "<joint_name> connect following to the named joint")
     ]
   in
   Arg.parse (Arg.align spec)
     (fun s ->
-      if !nmo_name != None
-      then anb_names := s :: !anb_names
-      else nmo_name := Some s;
+      if !model.nmo = None
+      then model := { !model with nmo = Some s }
+      else model := { !model with anims = s :: !model.anims }
     )
     "Usage: dormin [options] model.nmo [animation.anb ...]"
   ;
@@ -444,5 +458,5 @@ let _ =
     Format.eprintf "OpenGL does not support automatic mipmap generation@.";
     mipmaps := false;
   );
-  Skin.set !vp_name;
+  models := !model :: !models;
 ;;

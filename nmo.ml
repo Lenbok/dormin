@@ -392,19 +392,23 @@ let r xff sbufxff =
   { geom with surfaces = List.rev surfaces }
 ;;
 
-let draw geom =
+let draw name f geom =
   let l = lazy
     (
       let use_vbo =
         !Rend.try_vbo && Glut.extensionSupported "GL_ARB_vertex_buffer_object"
       in
-      Skin.init
+      let skin = Skin.init
+        name
         use_vbo
         (geom.vertexa, geom.normala, geom.uva, geom.skin, geom.colora)
+      in
+      f skin;
+      skin
     )
   in
   fun ~textures ~lighting ~solid ~colormaterial () ->
-    let () = Lazy.force l in
+    let skin = Lazy.force l in
     if true then (
       if textures then (
         Gl.enable `texture_2d;
@@ -452,11 +456,11 @@ let draw geom =
             g last_index rest
       in
 
-      Skin.draw_begin ();
+      Skin.draw_begin skin;
       (
         g 0 geom.surfaces;
       );
-      Skin.draw_end ();
+      Skin.draw_end skin;
 
       Gl.disable `texture_2d;
       Gl.disable `lighting;
@@ -465,8 +469,8 @@ let draw geom =
     );
 ;;
 
-let obj geom =
-  let draw = draw geom in
+let obj name f geom =
+  let draw = draw name f geom in
   let onoff c s b = c, "toggle " ^ s, if b then "on" else "off" in
   (object (self)
     val dodraw = true
@@ -499,36 +503,104 @@ let obj geom =
   end)
 ;;
 
-let _ =
+let drawobj, addobj =
+  let objs = ref [||] in
+  (object (self)
+    val index = -1
+
+    method help =
+      let name, obj =
+        if index = -1 then "all", snd !objs.(0) else !objs.(index)
+      in
+      if Array.length !objs > 1
+      then
+        ("pg up/dn", "cycle models", name) :: obj#help
+      else
+        obj#help
+
+    method draw =
+      if index = -1
+      then
+        Array.iter (fun (_, obj) -> obj#draw) !objs
+      else
+        (snd !objs.(index))#draw
+
+    method char c =
+      let clip index =
+        if index = Array.length !objs
+        then -1
+        else (
+          if index = -2
+          then Array.length !objs - 1
+          else index
+        )
+      in
+
+      match c with
+      | '\001' ->
+          {< index = clip (index + 1) >}
+      | '\002' ->
+          {< index = clip (index - 1) >}
+      | _ ->
+          if index = -1
+          then
+            objs := Array.map (fun (name, obj) -> name, obj#char c) !objs
+          else
+            objs := Array.mapi
+              (fun i (name, obj) -> name, if i = index then obj#char c else obj)
+              !objs
+          ;
+          self
+  end), (fun name obj -> objs := Array.append [|name, obj|] !objs)
+;;
+
+let calc_minmax geom =
+  let rec f ((minx, maxx, miny, maxy, minz, maxz) as minmax) i =
+    if i >= Array.length geom.vertexa
+    then minmax
+    else
+      let x = geom.vertexa.(i+0) in
+      let y = geom.vertexa.(i+1) in
+      let z = geom.vertexa.(i+2) in
+      let minmax =
+        min minx x, max maxx x,
+        min miny y, max maxy y,
+        min minz z, max maxz z
+      in
+      f minmax (i + 3)
+  in
+  let x = geom.vertexa.(0) in
+  let y = geom.vertexa.(1) in
+  let z = geom.vertexa.(2) in
+  f (x, x, y, y, z, z) 3
+;;
+
+let main model last =
   let name =
-    match !Rend.nmo_name with
+    match model.Rend.nmo with
     | None -> failwith "must supply model name"
     | Some s -> Filename.basename s
   in
   let x, sbuf = Xff.test2 name in
   let geom = r x sbuf in
-  let minmax =
-    let rec f ((minx, maxx, miny, maxy, minz, maxz) as minmax) i =
-      if i >= Array.length geom.vertexa
-      then minmax
-      else
-        let x = geom.vertexa.(i+0) in
-        let y = geom.vertexa.(i+1) in
-        let z = geom.vertexa.(i+2) in
-        let minmax =
-          min minx x, max maxx x,
-          min miny y, max maxy y,
-          min minz z, max maxz z
-        in
-        f minmax (i + 3)
-    in
-    let x = geom.vertexa.(0) in
-    let y = geom.vertexa.(1) in
-    let z = geom.vertexa.(2) in
-    f (x, x, y, y, z, z) 3
+  let skb_name =
+    match model.Rend.skb with
+    | None -> (Filename.chop_extension name) ^ ".skb"
+    | Some s -> Filename.basename s
   in
-  Skb.main name;
-  Rend.add_obj (obj geom);
-  Rend.init minmax;
-  Rend.main ()
+  addobj name (obj name (fun skin -> Skb.main skin skb_name model) geom);
+  if last
+  then (
+    Rend.add_obj drawobj;
+    Rend.init (calc_minmax geom);
+    Rend.main ();
+  );
+;;
+
+let main =
+  let rec f = function
+    | [] -> ()
+    | model :: [] -> main model true
+    | model :: rest ->  main model false; f rest
+  in f !Rend.models
 ;;

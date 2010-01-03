@@ -6,6 +6,7 @@
 #include <caml/fail.h>
 #include <caml/alloc.h>
 #include <caml/memory.h>
+#include <caml/custom.h>
 
 #include "vec.c"
 #include "pgl.h"
@@ -54,7 +55,6 @@ struct bone {
     float amq[4];
     float amv[4];
 
-    float cm[16];
     int parent;
 };
 
@@ -62,7 +62,8 @@ struct abone {
     float cm[CM_ELEMS];
 } A16;
 
-typedef struct {
+typedef struct state {
+    char *name;
     int num_bones;
     int num_vertices;
     GLuint bufid[2];
@@ -71,10 +72,36 @@ typedef struct {
     struct skin *skin;
     struct bone *bones;
     struct abone *abones;
+    struct bone *rbone;
+    struct abone *rabone;
 } State;
 
-static State glob_state;
 static int use_vbo;
+
+#define State_val(v) ((State *) Data_custom_val (v))
+
+static void ml_state_finalize (value state_v)
+{
+    State *s = State_val (state_v);
+    free (s->ptrs[0]);
+    if (use_vbo) {
+        glDeleteBuffers (2, s->bufid);
+    }
+    else {
+        free (s->ptrs[1]);
+        free (s->bufs[0]);
+    }
+}
+
+static char state_ops_name[] = "dormin.0";
+static struct custom_operations state_custom_ops = {
+    state_ops_name,
+    ml_state_finalize,
+    custom_compare_default,
+    custom_hash_default,
+    custom_serialize_default,
+    custom_deserialize_default
+};
 
 static void copy_vertices (float *p, int num_vertices, value a_v)
 {
@@ -120,8 +147,8 @@ static void set_geom (State *s, void **ptrs, value vertexa_v, value normala_v,
 
             val = Double_val (Bp_val (Field (v, j)));
 
-            boneindex = (int) val;
-            skin[i].weights[j] = val - boneindex;
+            boneindex = floor (val);
+            skin[i].weights[j] = fabs (val - (int) val);
             skin[i].boneinfo |= (boneindex + 1) << shifts[j];
         }
     }
@@ -183,11 +210,10 @@ static void skin_init (State *s, value vertexa_v, value normala_v,
     s->num_vertices /= 1;
 }
 
-CAMLprim value ml_skin_draw_begin (value unit_v)
+CAMLprim value ml_skin_draw_begin (value state_v)
 {
-    State *s = &glob_state;
-
-    (void) unit_v;
+    CAMLparam1 (state_v);
+    State *s = State_val (state_v);
 
     glEnableClientState (GL_VERTEX_ARRAY);
     glEnableClientState (GL_NORMAL_ARRAY);
@@ -202,25 +228,32 @@ CAMLprim value ml_skin_draw_begin (value unit_v)
     glTexCoordPointer (2, GL_FLOAT, 0, s->bufs[UV_IDX]);
     glColorPointer (4, GL_UNSIGNED_BYTE, 0, s->bufs[C_IDX]);
 
-    return Val_unit;
+    CAMLreturn (Val_unit);
 }
 
-CAMLprim value ml_skin_draw_end (value unit_v)
+CAMLprim value ml_skin_draw_end (value state_v)
 {
-    (void) unit_v;
+    CAMLparam1 (state_v);
     glDisableClientState (GL_VERTEX_ARRAY);
     glDisableClientState (GL_NORMAL_ARRAY);
     glDisableClientState (GL_TEXTURE_COORD_ARRAY);
     glDisableClientState (GL_COLOR_ARRAY);
     if (use_vbo) glBindBuffer (GL_ARRAY_BUFFER, 0);
-    return Val_unit;
+    CAMLreturn (Val_unit);
 }
 
-CAMLprim value ml_skin_init (value use_vbo_v, value geom_v)
+CAMLprim value ml_skin_init (value name_v, value use_vbo_v, value geom_v)
 {
-    CAMLparam2 (use_vbo_v, geom_v);
+    CAMLparam3 (name_v, use_vbo_v, geom_v);
     CAMLlocal5 (vertexa_v, normala_v, uva_v, skin_v, colors_v);
-    State *s = &glob_state;
+    value state_v;
+    State *s;
+
+    state_v = caml_alloc_custom (&state_custom_ops, sizeof (*s), 0, 1);
+    s = State_val (state_v);
+    memset (s, 0, sizeof (*s));
+
+    s->name = strdup (String_val (name_v));
 
     use_vbo = Bool_val (use_vbo_v);
 #ifdef _WIN32
@@ -240,7 +273,7 @@ CAMLprim value ml_skin_init (value use_vbo_v, value geom_v)
     colors_v  = Field (geom_v, 4);
 
     skin_init (s, vertexa_v, normala_v, uva_v, skin_v, colors_v);
-    CAMLreturn (Val_unit);
+    CAMLreturn (state_v);
 }
 
 #ifdef TIMING
@@ -475,15 +508,15 @@ static void translate (State *s, float *vdst, float *ndst)
 #endif
 }
 
-CAMLprim value ml_skin_set_skel (value skel_v)
+CAMLprim value ml_skin_set_skel (value state_v, value skel_v)
 {
     int i;
     size_t size;
     struct bone *b;
     struct abone *ab;
-    CAMLparam1 (skel_v);
+    CAMLparam2 (state_v, skel_v);
     CAMLlocal2 (v, floats_v);
-    State *s = &glob_state;
+    State *s = State_val (state_v);
 
     s->num_bones = Wosize_val (skel_v);
     size = (s->num_bones + 1) * sizeof (*b);
@@ -528,14 +561,19 @@ CAMLprim value ml_skin_set_skel (value skel_v)
     CAMLreturn (Val_unit);
 }
 
-CAMLprim value ml_skin_set_anim (value anim_v)
+CAMLprim value ml_skin_set_anim (value state_v, value anim_v)
 {
     int i;
-    CAMLparam1 (anim_v);
+    CAMLparam2 (state_v, anim_v);
     CAMLlocal1 (floats_v);
-    State *s = &glob_state;
-    struct bone *b = s->bones + 1;
-    struct abone *ab = s->abones + 1;
+    State *s = State_val (state_v);
+    struct bone *b = s->bones;
+    struct abone *ab;
+
+    if (s->rbone) {
+        memcpy (b, s->rbone, sizeof (*b));
+    }
+    b++;
 
     for (i = 0; i < s->num_bones; ++i, ++b) {
         floats_v = Field (anim_v, i);
@@ -546,6 +584,8 @@ CAMLprim value ml_skin_set_anim (value anim_v)
     }
 
     b = s->bones + 1;
+    ab = s->abones + 1;
+
     for (i = 0; i < s->num_bones; ++i, ++b, ++ab) {
         float v[4], v1[4], q[4], q1[4];
         struct bone *parent = &s->bones[b->parent];
@@ -565,12 +605,12 @@ CAMLprim value ml_skin_set_anim (value anim_v)
     CAMLreturn (Val_unit);
 }
 
-CAMLprim value ml_skin_anim (value unit_v)
+CAMLprim value ml_skin_anim (value state_v)
 {
     GLboolean ret;
-    CAMLparam1 (unit_v);
+    CAMLparam1 (state_v);
     float *vdst, *ndst;
-    State *s = &glob_state;
+    State *s = State_val (state_v);
 
     if (use_vbo) {
         glBindBuffer (GL_ARRAY_BUFFER, s->bufid[0]);
@@ -584,6 +624,9 @@ CAMLprim value ml_skin_anim (value unit_v)
         ndst = s->bufs[N_IDX];
     }
 
+    if (s->rabone) {
+        memcpy (s->abones, s->rabone, sizeof (*s->abones));
+    }
     translate (s, vdst, ndst);
 
     if (use_vbo) {
@@ -603,4 +646,19 @@ CAMLprim value ml_set_generate_mipmaps (value unit_v)
     (void) unit_v;
     glTexParameteri (GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
     return Val_unit;
+}
+
+CAMLprim value ml_skin_set_parent (value skin_v, value root_skin_v,
+                                   value root_index_v)
+{
+    CAMLparam3 (skin_v, root_skin_v, root_index_v);
+    State *s, *root;
+    int index = Int_val (root_index_v);
+
+    s = State_val (skin_v);
+    root = State_val (root_skin_v);
+    s->rbone = &root->bones[index + 1];
+    s->rabone = &root->abones[index + 1];
+
+    CAMLreturn (Val_unit);
 }
