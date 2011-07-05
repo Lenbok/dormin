@@ -246,8 +246,13 @@ let test2 name =
     | None -> path
   in
   if false then Format.eprintf "%s %s %08x %d@." name path off len;
+  let off =
+    if off lsr 30 = 1
+    then Int64.logor (Int64.of_int (off land 0x3fff_ffff)) 0x4000_0000L
+    else Int64.of_int off
+  in
   let ic = open_in_bin path in
-  seek_in ic off;
+  LargeFile.seek_in ic off;
   let (_, (s, _)) as r = rxff ic in
   close_in ic;
   Slice.add name s;
