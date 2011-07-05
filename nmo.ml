@@ -357,7 +357,7 @@ let r xff sbufxff =
         let image2d level (w, h, data) =
           let raw = Raw.of_string data `ubyte in
           let pix = GlPix.of_raw raw `rgba w h in
-          GlTex.image2d ~level pix
+          GlTex.image2d ~internal:0x8058 ~level pix
         in
         if !Rend.mipmaps then Array.iteri image2d nto else image2d 0 nto.(0);
         id

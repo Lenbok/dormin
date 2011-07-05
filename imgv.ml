@@ -86,7 +86,7 @@ let main =
     GlTex.parameter `texture_2d (`wrap_t `repeat);
     let raw = Raw.of_string data `ubyte in
     let pix = GlPix.of_raw raw `rgba w h in
-    GlTex.image2d ~level pix
+    GlTex.image2d ~level ~internal:0x8058 pix
   in
   let level =
     if !level < 0 || !level >= Array.length nto
