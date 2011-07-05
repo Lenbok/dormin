@@ -273,13 +273,25 @@ let drawobj =
     method help =
       !skels.(index)#help
 
-    method draw =
-      Array.iter (fun skel -> skel#draw) !skels
+    method draw = ()
 
     method char c =
       Array.iteri (fun i skel -> !skels.(i) <- skel#char c) !skels;
       self
   end)
+;;
+
+let hack () =
+  Rend.add_obj
+    (object (self)
+      val index = 0
+      method help = []
+
+      method draw =
+        Array.iter (fun skel -> skel#draw) !skels
+
+      method char c = self
+    end)
 ;;
 
 let regbones name skin model bones anim =

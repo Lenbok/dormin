@@ -589,6 +589,7 @@ let main model last =
   addobj name (obj name (fun skin -> Skb.main skin skb_name model) geom);
   if last
   then (
+    Skb.hack ();
     Rend.add_obj drawobj;
     Rend.init (calc_minmax geom);
     Rend.main ();
