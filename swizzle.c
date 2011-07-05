@@ -33,10 +33,7 @@ static void unswizzle_32_to_4 (void *dst, unsigned char *src, void *pal, int w, 
     uint32 *rgba = dst;
     uint32 *palD = pal;
 
-    /* what follows is a gross hack
-       on top of that it doesn't work all that good with (at the very least):
-       wanda_face2_LV0_mip.nto at any mipmap level but 0
-     */
+    /* what follows is a gross hack, but it (for some reason works)*/
     if (w != h) height <<= 1;
 
     for (y=0; y<h; y++) {

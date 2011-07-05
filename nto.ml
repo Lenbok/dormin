@@ -37,7 +37,8 @@ let r xff sbufxff =
     to_rgba s (p+pixpos, p+palpos) (w, h) swz
   in
 
-  let rgba pixpos w h =
+  let rgba level pixpos w h =
+    let swizzled = (1 lsl level) land swz != 0 in
     match kind with
     | 0x00 ->                           (* 32 bit *)
         let len = w * h * 4 in
@@ -50,10 +51,8 @@ let r xff sbufxff =
         ;
         dst, len
 
-    | 0x14 when swz = 0            -> to_rgba pixpos w h Plain4, w*h/2
-    | 0x14 when swz = 1 || swz = 3 -> to_rgba pixpos w h Swz4, w*h/2
-    | 0x13 when swz = 0            -> to_rgba pixpos w h Plain8, w*h
-    | 0x13 when swz = 1 || swz = 3 -> to_rgba pixpos w h Swz8, w*h
+    | 0x14 -> to_rgba pixpos w h (if swizzled then Swz4 else Plain4), w*h/2
+    | 0x13 -> to_rgba pixpos w h (if swizzled then Swz8 else Plain8), w*h
 
     | _ ->
         Xff.sbuferr ntobuf 28 "invalid kind"
@@ -62,7 +61,7 @@ let r xff sbufxff =
   Array.init mipmaps
     (fun i ->
       let w = w lsr i and h = h lsr i in
-      let data, insize = rgba !pixpos w h in
+      let data, insize = rgba i !pixpos w h in
       let v = w, h, data in
       pixpos := !pixpos + insize;
       v
