@@ -63,7 +63,6 @@ struct abone {
 } A16;
 
 typedef struct state {
-    char *name;
     int num_bones;
     int num_vertices;
     GLuint bufid[2];
@@ -252,8 +251,6 @@ CAMLprim value ml_skin_init (value name_v, value use_vbo_v, value geom_v)
     state_v = caml_alloc_custom (&state_custom_ops, sizeof (*s), 0, 1);
     s = State_val (state_v);
     memset (s, 0, sizeof (*s));
-
-    s->name = strdup (String_val (name_v));
 
     use_vbo = Bool_val (use_vbo_v);
 #ifdef _WIN32
