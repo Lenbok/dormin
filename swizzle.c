@@ -33,8 +33,14 @@ static void unswizzle_32_to_4 (void *dst, unsigned char *src, void *pal, int w, 
     uint32 *rgba = dst;
     uint32 *palD = pal;
 
-    for (y=0; y<height; y++) {
-        for (x=0; x<width; x++) {
+    /* what follows is a gross hack
+       on top of that it doesn't work all that good with (at the very least):
+       wanda_face2_LV0_mip.nto at any mipmap level but 0
+     */
+    if (w != h) height <<= 1;
+
+    for (y=0; y<h; y++) {
+        for (x=0; x<w; x++) {
             int pageX = x & (~0x7f);
             int pageY = y & (~0x7f);
 
@@ -98,8 +104,8 @@ CAMLprim value ml_to_rgba (value data_v, value positions_v,
         case 1:
             for (i = 0; i < (size >> 1); ++i) {
                 unsigned char v = pix[i];
-                rgba[i*2] = pal[v >> 4];
-                rgba[i*2+1] = pal[v & 0x0f];
+                rgba[i*2+1] = pal[v >> 4];
+                rgba[i*2] = pal[v & 0x0f];
             }
             break;
 
