@@ -9,9 +9,7 @@ type surf =
     { tricount : int
     ; strcount : int
     ; name : string
-    ; hdr1 : (int array * float * int32 * int32) array
-    ; hdr2 : (int32 * float * float * int32 array)
-    ; hdr3 : int32 array
+    ; passes : (int * int * int) array
     }
 
 type surf1 =
@@ -37,7 +35,7 @@ type geom =
     ; normala : float array
     ; uva : float array
     ; colora : string
-    ; surfaces : (int list * surf * GlTex.texture_id lazy_t) list
+    ; surfaces : (int list * surf * GlTex.texture_id lazy_t * int * int) list
     }
 
 let rsurf1 sbuf =
@@ -225,8 +223,7 @@ let rtext n sectbuf sbuf =
       if true then Xff.test2 (name ^ ".nto")
       else Xff.test2 ("scee_logo_uk.nto")
     in
-    let dim = (w, h) in
-    Nto.r xff sbuf ~dim ()
+    Nto.r xff sbuf
   in
   { texname = name
   ; nto = nto
@@ -245,37 +242,34 @@ let rsrf n sectbuf sbuf =
   let tricount = Xff.rint sbuf 4
   and stripcount = Xff.rint sbuf 8
   and nameoff = Xff.rint sbuf 12 in
-  let hdr1 =
-    Array.init 3
-      (fun n ->
-        let sbuf = Xff.sbufplus sbuf (16 + n*16) in
-        let _0 = Array.init 4 (fun n -> Xff.r8 sbuf n) in
-        let _1 = Xff.rfloat sbuf 4 in
-        let _2 = Xff.r32 sbuf 8 in
-        let _3 = Xff.r32 sbuf 12 in
-        (_0, _1, _2, _3)
-      )
-  in
-  let hdr2 =
-    let sbuf = Xff.sbufplus sbuf (16 + 3*16) in
-    let _0 = Xff.r32 sbuf 0 in
-    let _1 = Xff.rfloat sbuf 4 in
-    let _2 = Xff.rfloat sbuf 8 in
-    let _3 = Array.init 5 (fun n -> Xff.r32 sbuf (12 + n*4)) in
-    (_0, _1, _2, _3)
-  in
-  let hdr3 =
-    let sbuf = Xff.sbufplus sbuf (16 + 3*16 + 32) in
-    Array.init 48 (fun n -> Xff.r32 sbuf (n*4))
+  let numpasses = Xff.rint sbuf 0x1c in
+  let passes = Array.init numpasses
+    (fun n ->
+      let texid = Xff.rint sbuf (0x2c + 0x10*n) in
+      let blend = Xff.rint sbuf (0x80 + 0x20*n) in
+      let wrap = Xff.rint sbuf (0x90 + 0x20*n) in
+      (texid, blend, wrap))
   in
   let name = Xff.rcstrtabent sectbuf nameoff 0 in
   { tricount = tricount
   ; strcount = stripcount
   ; name = name
-  ; hdr1 = hdr1
-  ; hdr2 = hdr2
-  ; hdr3 = hdr3
+  ; passes = passes
   }
+;;
+
+let gswraptogl s v =
+  match v land 3 with
+  | 0 -> `repeat
+  | 1 -> `clamp
+  | _ ->
+      eprintf "unknown %s wrap mode (%d) treating as repeat@." s v;
+      `repeat
+;;
+
+let gswraptogl1 s v =
+  eprintf "%s wrap is %d@." s (v land 3);
+  gswraptogl s v;
 ;;
 
 let r xff sbufxff =
@@ -327,6 +321,7 @@ let r xff sbufxff =
       Array.fold_left
         (fun num_strips surf -> num_strips + surf.strcount) 0 surfs
     in
+    printf "%d vertices %d strips\n" num_vertices num_strips;
     (num_vertices, num_strips)
   in
 
@@ -336,38 +331,37 @@ let r xff sbufxff =
   )
   in
 
-  let texts =
-    Array.map
-      (fun text ->
-        lazy
-          (
-            let nto = text.nto in
-            let id = GlTex.gen_texture () in
-            GlTex.bind_texture `texture_2d id;
-            GlTex.parameter `texture_2d (`mag_filter `linear);
-            if !Rend.mipmaps then (
-              GlTex.parameter `texture_2d (`min_filter `linear_mipmap_linear);
-              (* GlTex.parameter `texture_2d (`generate_mipmap true); *)
-              let module M =
-                  struct
-                    external genmipmaps:unit -> unit = "ml_set_generate_mipmaps"
-                  end
-              in M.genmipmaps ()
-            )
-            else (
-              GlTex.parameter `texture_2d (`min_filter `linear);
-            );
-            GlTex.parameter `texture_2d (`wrap_s `repeat);
-            GlTex.parameter `texture_2d (`wrap_t `repeat);
-            let image2d level (w, h, data) =
-              let raw = Raw.of_string data `ubyte in
-              let pix = GlPix.of_raw raw `rgba w h in
-              GlTex.image2d ~level pix
-            in
-            if !Rend.mipmaps then Array.iteri image2d nto else image2d 0 nto.(0);
-            id
-          )
-      ) texts
+  let mktexture blend wrap text =
+    lazy
+      (
+        let nto = text.nto in
+        let id = GlTex.gen_texture () in
+        GlTex.bind_texture `texture_2d id;
+        GlTex.parameter `texture_2d (`mag_filter `linear);
+        if !Rend.mipmaps then (
+          GlTex.parameter `texture_2d (`min_filter `linear_mipmap_linear);
+          (* GlTex.parameter `texture_2d (`generate_mipmap true); *)
+          let module M =
+              struct
+                external genmipmaps:unit -> unit = "ml_set_generate_mipmaps"
+              end
+          in M.genmipmaps ()
+        )
+        else (
+          GlTex.parameter `texture_2d (`min_filter `linear);
+        );
+        let s = gswraptogl "s" wrap in
+        let t = gswraptogl "t" (wrap lsr 2) in
+        GlTex.parameter `texture_2d (`wrap_s s);
+        GlTex.parameter `texture_2d (`wrap_t t);
+        let image2d level (w, h, data) =
+          let raw = Raw.of_string data `ubyte in
+          let pix = GlPix.of_raw raw `rgba w h in
+          GlTex.image2d ~level pix
+        in
+        if !Rend.mipmaps then Array.iteri image2d nto else image2d 0 nto.(0);
+        id
+      )
   in
 
   let geom =
@@ -384,9 +378,13 @@ let r xff sbufxff =
       (fun (last_index, countss) surf1 ->
         let index, counts = rgeom1 last_index surf1 geom sectbuf in
         let surf = surfs.(surf1.surf) in
-        let _, _, _, texindex = surf.hdr1.(1) in
-        let text = texts.(Int32.to_int texindex) in
-        (index, (List.rev counts, surf, text) :: countss)
+        if (Array.length surf.passes) = 0
+        then
+          last_index, countss
+        else
+          let texindex, blend, wrap = surf.passes.(0) in
+          let text = mktexture blend wrap texts.(texindex) in
+          (index, (List.rev counts, surf, text, blend, wrap) :: countss)
       ) (0, []) surf1s
   in
   { geom with surfaces = List.rev surfaces }
@@ -449,7 +447,7 @@ let draw name f geom =
             f (last_index + count) surf rest
       and g last_index = function
         | [] -> ()
-        | (counts, surf, id) :: rest ->
+        | (counts, surf, id, blend, wrap) :: rest ->
             let texid = Lazy.force id in
             GlTex.bind_texture `texture_2d texid;
             let last_index = f last_index surf counts in
