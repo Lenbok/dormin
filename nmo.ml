@@ -405,9 +405,28 @@ let draw name f geom =
       skin
     )
   in
-  fun ~textures ~lighting ~solid ~colormaterial () ->
+  fun ~dumpstl ~textures ~lighting ~solid ~colormaterial () ->
     let skin = Lazy.force l in
-    if true then (
+    if dumpstl then (
+      let rec f last_index surf = function
+        | [] -> last_index
+        | count :: rest ->
+            Skin.stl skin last_index count;
+            f (last_index + count) surf rest
+      and g last_index = function
+        | [] -> ()
+        | (counts, surf, id, blend, wrap) :: rest ->
+            let last_index = f last_index surf counts in
+            g last_index rest
+      in
+
+      Skin.stl_begin skin;
+      (
+        g 0 geom.surfaces;
+      );
+      Skin.stl_end skin;
+    )
+    else (
       if textures then (
         Gl.enable `texture_2d;
       )
@@ -483,12 +502,16 @@ let obj name f geom =
       ;onoff "w" "wireframe" (not solid)
       ;onoff "c" "color material" colormaterial
       ;onoff "m" "model" dodraw
+      ;"D", "dump STL file", ""
       ]
 
     method draw =
       if dodraw
       then
-        draw ~textures ~lighting ~solid ~colormaterial ()
+        draw ~dumpstl:false ~textures ~lighting ~solid ~colormaterial ()
+
+    method stl =
+      draw ~dumpstl:true ~textures ~lighting ~solid ~colormaterial ()
 
     method char c =
       match c with
@@ -497,6 +520,7 @@ let obj name f geom =
       | 'w' -> {< solid = not solid >}
       | 'c' -> {< colormaterial = not colormaterial >}
       | 'm' -> {< dodraw = not dodraw >}
+      | 'D' -> self#stl; self
       | _ -> self
   end)
 ;;

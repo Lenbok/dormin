@@ -2,11 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <caml/fail.h>
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/custom.h>
+#include <caml/unixsupport.h>
 
 #include "vec.c"
 #include "pgl.h"
@@ -73,6 +75,7 @@ typedef struct state {
     struct abone *abones;
     struct bone *rbone;
     struct abone *rabone;
+    FILE *stlf;
 } State;
 
 static int use_vbo;
@@ -656,6 +659,80 @@ CAMLprim value ml_skin_set_parent (value skin_v, value root_skin_v,
     root = State_val (root_skin_v);
     s->rbone = &root->bones[index + 1];
     s->rabone = &root->abones[index + 1];
+
+    CAMLreturn (Val_unit);
+}
+
+CAMLprim value ml_skin_stl_begin (value skin_v)
+{
+    CAMLparam1 (skin_v);
+    State *s = State_val (skin_v);
+
+    s->stlf = fopen ("dump.stl", "wb");
+    if (!s->stlf) {
+        value ue = unix_error_of_code (errno);
+        caml_raise (ue);
+    }
+    fprintf (s->stlf, "solid\n");
+    CAMLreturn (Val_unit);
+}
+
+#include <GL/glut.h>
+CAMLprim value ml_skin_stl_end (value skin_v)
+{
+    CAMLparam1 (skin_v);
+    State *s = State_val (skin_v);
+
+    fprintf (s->stlf, "endsolid\n");
+    fclose (s->stlf);
+    s->stlf = NULL;
+    glDrawBuffer (GL_BACK);
+    CAMLreturn (Val_unit);
+}
+
+CAMLprim value ml_skin_stl (value skin_v, value index_v, value count_v)
+{
+    CAMLparam3 (skin_v, index_v, count_v);
+    State *s = State_val (skin_v);
+    int index = Int_val (index_v);
+    int count = Int_val (count_v);
+    int i;
+    float *v;
+    FILE *f;
+
+    v = s->bufs[V_IDX] + (index*3*4);
+
+    f = s->stlf;
+    for (i = 0; i < count - 2; ++i ) {
+        float *v0;
+        float *v1;
+        float *v2;
+        float a[3], b[3], n1[3], n[3];
+
+        if (i & 1) {
+            v0 = v + i*3;
+            v1 = v + i*3 + 3;
+            v2 = v + i*3 + 6;
+        }
+        else  {
+            v0 = v + i*3 + 3;
+            v1 = v + i*3;
+            v2 = v + i*3 + 6;
+        }
+        vsub (a, v1, v0);
+        vsub (b, v2, v0);
+
+        vcross (n1, b, a);
+        vnorm (n, n1);
+
+        fprintf (f, "facet normal %e %e %e\n", n[0], n[1], n[2]);
+        fprintf (f, "outer loop\n");
+        fprintf (f, "vertex %e %e %e\n", v0[0], v0[1], v0[2]);
+        fprintf (f, "vertex %e %e %e\n", v1[0], v1[1], v1[2]);
+        fprintf (f, "vertex %e %e %e\n", v2[0], v2[1], v2[2]);
+        fprintf (f, "endloop\n");
+        fprintf (f, "endfacet\n");
+    }
 
     CAMLreturn (Val_unit);
 }

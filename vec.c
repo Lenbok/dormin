@@ -25,6 +25,22 @@ static void qconjugate (float *res, float *q)
     res[3] = q[3];
 }
 
+static void vcross (float *res, float *v1, float *v2)
+{
+    res[0] = v1[1] * v2[2] - v1[2] * v2[1];
+    res[1] = v1[2] * v2[0] - v1[0] * v2[2];
+    res[2] = v1[0] * v2[1] - v1[1] * v2[0];
+}
+
+static void vnorm (float *res, float *v)
+{
+    float mag2 = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    float mag = sqrt (mag2);
+    res[0] = v[0] / mag;
+    res[1] = v[1] / mag;
+    res[2] = v[2] / mag;
+}
+
 static void qapply (float *res, float *q, float *v)
 {
     float a = -q[3];
